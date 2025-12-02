@@ -37,6 +37,7 @@
   .list{max-height:380px;overflow:auto}
   .meta{font-size:12px;color:var(--muted)}
   .star-ico{font-size:18px;margin-right:6px}
+  .diary-item{padding:8px;border-bottom:1px solid #f3f6fb}
   @media(max-width:980px){.grid{grid-template-columns:1fr} }
 </style>
 </head>
@@ -110,17 +111,17 @@
 
             <div style="margin-top:12px">
               <label>อารมณ์วันนี้</label>
-              <div id="moodButtons" class="emoji-row"></div>
+              <div id="studentMoodButtons" class="emoji-row"></div>
             </div>
 
             <div style="margin-top:12px">
               <label>ข้อความสั้น ๆ / My diary</label>
-              <textarea id="diaryText" rows="3" placeholder="เล่าเรื่องสั้น ๆ วันนี้เป็นอย่างไร..."></textarea>
+              <textarea id="studentDiaryText" rows="3" placeholder="เล่าเรื่องสั้น ๆ วันนี้เป็นอย่างไร..."></textarea>
             </div>
 
             <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
-              <button id="saveMoodBtn">บันทึกอารมณ์</button>
-              <div class="muted">บันทึกล่าสุด: <span id="lastMoodText">-</span></div>
+              <button id="saveStudentMoodBtn">บันทึกอารมณ์</button>
+              <div class="muted">บันทึกล่าสุด: <span id="lastStudentMoodText">-</span></div>
             </div>
 
             <div class="card" style="margin-top:12px">
@@ -133,6 +134,12 @@
               <div class="chart-wrap"><canvas id="moodPeriodChart" height="170"></canvas></div>
               <div style="margin-top:10px" class="muted small">กราฟอัปเดตเมื่อบันทึกอารมณ์</div>
             </div>
+
+            <div class="card" style="margin-top:12px">
+              <strong>ประวัติ My diary</strong>
+              <div id="studentDiaryHistory" class="list" style="margin-top:8px"></div>
+            </div>
+
           </div>
 
           <!-- Redeem / Appointments / Quiz -->
@@ -180,7 +187,35 @@
           <div class="card">
             <div style="display:flex;align-items:center;gap:12px">
               <div><strong>แผงครู</strong></div>
-              <div class="muted">จัดการนักเรียน ดูคำขอนัด และสถิติ</div>
+              <div class="muted">บันทึกอารมณ์ประจำวันและ My diary สำหรับครู</div>
+            </div>
+          </div>
+
+          <!-- Teacher mood & diary (replaces teacher stars) -->
+          <div class="card" style="margin-top:12px">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div><strong>บันทึกอารมณ์ของครู</strong></div>
+              <div class="muted">ครูสามารถบันทึกอารมณ์และข้อความสั้น ๆ เป็น My diary</div>
+            </div>
+
+            <div style="margin-top:12px">
+              <label>อารมณ์วันนี้ (ครู)</label>
+              <div id="teacherMoodButtons" class="emoji-row"></div>
+            </div>
+
+            <div style="margin-top:12px">
+              <label>ข้อความสั้น ๆ / My diary (ครู)</label>
+              <textarea id="teacherDiaryText" rows="3" placeholder="บันทึกสำหรับวันนี้..."></textarea>
+            </div>
+
+            <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+              <button id="saveTeacherMoodBtn">บันทึกอารมณ์ (ครู)</button>
+              <div class="muted">บันทึกล่าสุด: <span id="lastTeacherMoodText">-</span></div>
+            </div>
+
+            <div class="card" style="margin-top:12px">
+              <strong>ประวัติ My diary ของครู</strong>
+              <div id="teacherDiaryHistory" class="list" style="margin-top:8px"></div>
             </div>
           </div>
 
@@ -221,7 +256,7 @@
               <div id="profileName"><strong>-</strong></div>
               <div id="profileRole" class="meta">-</div>
             </div>
-            <div style="margin-left:auto"><span class="badge">⭐ <span id="profileStars">0</span></span></div>
+            <div style="margin-left:auto"><span class="badge" id="profileStarsWrap">⭐ <span id="profileStars">0</span></span></div>
           </div>
 
           <div id="profileBox" style="margin-top:12px"></div>
@@ -252,8 +287,10 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-/* LiteVibe v3 — with avatar upload, teacher star icon, teacher select for appointments, quiz selection
-   Storage key kept from previous: 'litevibe_data_v2' to reuse sample data if present.
+/* LiteVibe updated:
+ - Teacher panel: replaced teacher stars area with teacher mood + diary recording
+ - Both student and teacher panels now show diary history lists
+ - Avatar, redeem, appt, quiz, charts preserved
 */
 
 const STORAGE_KEY = 'litevibe_data_v2';
@@ -404,9 +441,10 @@ function renderProfile(){
   const avatarBox = document.getElementById('profileAvatar');
   const nameEl = document.getElementById('profileName');
   const roleEl = document.getElementById('profileRole');
+  const starsWrap = document.getElementById('profileStarsWrap');
   const starsEl = document.getElementById('profileStars');
   const box = document.getElementById('profileBox');
-  if(!currentUser){ avatarBox.innerHTML='LV'; nameEl.innerHTML='<strong>-</strong>'; roleEl.innerText='-'; starsEl.innerText='0'; box.innerHTML='เข้าสู่ระบบเพื่อดูโปรไฟล์'; return; }
+  if(!currentUser){ avatarBox.innerHTML='LV'; nameEl.innerHTML='<strong>-</strong>'; roleEl.innerText='-'; starsWrap.style.display='inline-block'; starsEl.innerText='0'; box.innerHTML='เข้าสู่ระบบเพื่อดูโปรไฟล์'; return; }
   const u = state.users[currentUser];
   avatarBox.innerHTML = '';
   if(u.avatar){
@@ -416,7 +454,15 @@ function renderProfile(){
   }
   nameEl.innerHTML = `<strong>${u.display || u.name}</strong>`;
   roleEl.innerText = u.role;
-  starsEl.innerText = u.stars || 0;
+
+  // If user is teacher, hide the profile stars (requirement: remove teachers' stars in teacherdashboard)
+  if(u.role === 'teacher'){
+    starsWrap.style.display = 'none';
+  } else {
+    starsWrap.style.display = 'inline-block';
+    starsEl.innerText = u.stars || 0;
+  }
+
   let html = `<div class="meta">บันทึกล่าสุด:</div>`;
   if(u.moods && u.moods.length){
     const last = u.moods[u.moods.length-1];
@@ -426,9 +472,11 @@ function renderProfile(){
 }
 
 /* ---------- Mood UI & Save ---------- */
-const moodButtonsContainer = document.getElementById('moodButtons');
-function renderMoodButtons(){
-  moodButtonsContainer.innerHTML = '';
+/* We'll render separate mood button groups for student and teacher */
+function renderMoodButtons(containerId){
+  const container = document.getElementById(containerId);
+  if(!container) return;
+  container.innerHTML = '';
   emojiChoices.forEach(e=>{
     const btn = document.createElement('button');
     btn.className = 'emoji-btn';
@@ -436,34 +484,72 @@ function renderMoodButtons(){
     btn.innerHTML = `<div style="font-size:32px">${e.emoji}</div><div class="label">${e.label}</div>`;
     btn.style.background = `linear-gradient(180deg, rgba(255,255,255,1), ${hexToRgba(e.color,0.06)})`;
     btn.addEventListener('click', ()=>{
-      document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.remove('selected'));
+      // only select within this container
+      Array.from(container.querySelectorAll('.emoji-btn')).forEach(b=>b.classList.remove('selected'));
       btn.classList.add('selected');
     });
-    moodButtonsContainer.appendChild(btn);
+    container.appendChild(btn);
   });
 }
-renderMoodButtons();
+renderMoodButtons('studentMoodButtons');
+renderMoodButtons('teacherMoodButtons');
 
-document.getElementById('saveMoodBtn').addEventListener('click', ()=>{
+document.getElementById('saveStudentMoodBtn').addEventListener('click', ()=>{
   if(!currentUser) return alert('กรุณาเข้าสู่ระบบ');
-  const sel = document.querySelector('.emoji-btn.selected');
+  const sel = document.querySelector('#studentMoodButtons .emoji-btn.selected');
   if(!sel) return alert('กรุณาเลือกรูปอารมณ์');
   const key = sel.dataset.key;
   const meta = emojiChoices.find(x=>x.key===key);
-  const note = document.getElementById('diaryText').value.trim();
+  const note = document.getElementById('studentDiaryText').value.trim();
   const now = new Date();
   const entry = { iso: now.toISOString(), time: now.toLocaleString(), key, emoji: meta.emoji, label: meta.label, note };
   const u = state.users[currentUser];
   u.moods = u.moods || []; u.moods.push(entry);
-  if(note) u.diaries = u.diaries || [], u.diaries.push({time:entry.time, text:note});
+  if(note){
+    u.diaries = u.diaries || [];
+    u.diaries.push({time:entry.time, text:note});
+  }
   saveState();
-  logActivity(`${currentUser} บันทึกอารมณ์: ${meta.emoji} ${meta.label}`);
-  document.getElementById('diaryText').value = '';
-  document.querySelectorAll('.emoji-btn').forEach(b=>b.classList.remove('selected'));
+  logActivity(`${currentUser} (นักเรียน) บันทึกอารมณ์: ${meta.emoji} ${meta.label}`);
+  document.getElementById('studentDiaryText').value = '';
+  Array.from(document.querySelectorAll('#studentMoodButtons .emoji-btn')).forEach(b=>b.classList.remove('selected'));
   renderAll();
 });
 
-/* ---------- Redeem / Appointments / Quiz ---------- */
+document.getElementById('saveTeacherMoodBtn').addEventListener('click', ()=>{
+  if(!currentUser) return alert('กรุณาเข้าสู่ระบบ');
+  const sel = document.querySelector('#teacherMoodButtons .emoji-btn.selected');
+  if(!sel) return alert('กรุณาเลือกรูปอารมณ์สำหรับครู');
+  const key = sel.dataset.key;
+  const meta = emojiChoices.find(x=>x.key===key);
+  const note = document.getElementById('teacherDiaryText').value.trim();
+  const now = new Date();
+  const entry = { iso: now.toISOString(), time: now.toLocaleString(), key, emoji: meta.emoji, label: meta.label, note };
+  const u = state.users[currentUser];
+  u.moods = u.moods || []; u.moods.push(entry);
+  if(note){
+    u.diaries = u.diaries || [];
+    u.diaries.push({time:entry.time, text:note});
+  }
+  saveState();
+  logActivity(`${currentUser} (ครู) บันทึกอารมณ์: ${meta.emoji} ${meta.label}`);
+  document.getElementById('teacherDiaryText').value = '';
+  Array.from(document.querySelectorAll('#teacherMoodButtons .emoji-btn')).forEach(b=>b.classList.remove('selected'));
+  renderAll();
+});
+
+/* ---------- Diary history render for student and teacher ---------- */
+function renderDiaryHistoryForUser(user, containerId){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  if(!user.diaries || !user.diaries.length){
+    el.innerHTML = '<div class="meta">ยังไม่มีบันทึก My diary</div>';
+    return;
+  }
+  el.innerHTML = user.diaries.slice().reverse().map(d=>`<div class="diary-item"><div class="meta">${d.time}</div><div style="margin-top:6px">${escapeHtml(d.text)}</div></div>`).join('');
+}
+
+/* ---------- Redeem / Appointments / Quiz (unchanged logic) ---------- */
 document.getElementById('openRedeem').addEventListener('click', ()=>{
   const p = document.getElementById('redeemPanel');
   if(p.style.display==='block'){ p.style.display='none'; return; }
@@ -515,7 +601,7 @@ document.getElementById('requestAppt').addEventListener('click', ()=> {
   document.getElementById('apptMsg').value = '';
 });
 
-/* quiz selection + rendering */
+/* quiz selection + rendering (unchanged) */
 const quizzes = {
   basic: [
     {q:'ในสัปดาห์ที่ผ่านมาคุณรู้สึกมีความสุขบ่อยแค่ไหน?', options:['ไม่เลย','บางครั้ง','บ่อย','ตลอดเวลา'], scores:[0,1,2,3]},
@@ -675,7 +761,7 @@ function renderQuickPanel(){
 /* activity */
 function renderActivity(){ const el = document.getElementById('activityLog'); el.innerHTML = state.activity.map(a=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${a.time}</div><div>${a.txt}</div></div>`).join(''); }
 
-/* ---------- CHART: Period aggregation ---------- */
+/* ---------- CHARTS (unchanged) ---------- */
 const ctxPeriod = document.getElementById('moodPeriodChart').getContext('2d');
 let currentPeriod = 'week';
 document.querySelectorAll('.periodBtn').forEach(b=>{
@@ -690,18 +776,11 @@ document.querySelectorAll('.periodBtn').forEach(b=>{
 function renderPeriodChart(period){
   if(!currentUser) return;
   const u = state.users[currentUser];
-  const labelsList = emojiChoices.map(m=>m.label);
   const aggregated = aggregateByPeriod(u.moods || [], period);
   const labels = aggregated.labels;
-  const datasets = emojiChoices.map((e)=>{
-    return { label: e.label, data: aggregated.data.map(d=>d[e.label]||0), backgroundColor: hexToRgba(e.color,0.95), stack:'s1' };
-  });
+  const datasets = emojiChoices.map(e=>({ label:e.label, data: aggregated.data.map(d=>d[e.label]||0), backgroundColor: hexToRgba(e.color,0.95), stack:'s1' }));
   if(periodChart) periodChart.destroy();
-  periodChart = new Chart(ctxPeriod, {
-    type:'bar',
-    data: { labels, datasets },
-    options: { responsive:true, plugins:{legend:{position:'bottom'}}, scales:{ x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}} } }
-  });
+  periodChart = new Chart(ctxPeriod, { type:'bar', data:{ labels, datasets }, options:{ responsive:true, plugins:{legend:{position:'bottom'}}, scales:{ x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}} } } });
 }
 
 function aggregateByPeriod(moods, period){
@@ -787,7 +866,7 @@ function renderRedeemHistory(u){
   const el = document.getElementById('redeemHistory');
   if(!el) return;
   if(!u.redeemHistory || !u.redeemHistory.length){ el.innerHTML = '<div class="meta">ยังไม่มีการแลก</div>'; return; }
-  el.innerHTML = u.redeemHistory.map(r=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div><strong>${r.item}</strong> <div class="meta">(${r.cost} ⭐)</div></div><div class="meta">${r.time}</div></div>`).join('');
+  el.innerHTML = u.redeemHistory.slice().reverse().map(r=>`<div class="diary-item"><div><strong>${r.item}</strong> <div class="meta">(${r.cost} ⭐)</div></div><div class="meta">${r.time}</div></div>`).join('');
 }
 
 /* ---------- render panels and initial rendering ---------- */
@@ -796,16 +875,25 @@ function renderPanels(){
   const u = state.users[currentUser];
   document.getElementById('studentPanel').style.display = u.role === 'student' ? 'block' : 'none';
   document.getElementById('teacherPanel').style.display = u.role === 'teacher' ? 'block' : 'none';
+
+  // student-specific render
   if(u.role === 'student'){
     document.getElementById('myStars').innerText = u.stars || 0;
     renderApptHistory(u);
     renderRedeemHistory(u);
+    renderDiaryHistoryForUser(u, 'studentDiaryHistory');
+    document.getElementById('lastStudentMoodText').innerText = u.moods && u.moods.length ? `${u.moods[u.moods.length-1].emoji} ${u.moods[u.moods.length-1].label} — ${u.moods[u.moods.length-1].time}` : '-';
   } else {
-    renderStudentsList();
+    // teacher-specific render
     renderApptRequests();
     renderReportsList();
     buildReportStudentSelect();
+    renderStudentsList();
+    // teacher diary history
+    renderDiaryHistoryForUser(u, 'teacherDiaryHistory');
+    document.getElementById('lastTeacherMoodText').innerText = u.moods && u.moods.length ? `${u.moods[u.moods.length-1].emoji} ${u.moods[u.moods.length-1].label} — ${u.moods[u.moods.length-1].time}` : '-';
   }
+
   renderQuickPanel();
   populateTeachersForAppt();
 }
@@ -814,13 +902,18 @@ function renderPanels(){
 function renderApptHistory(u){
   const el = document.getElementById('apptHistory');
   if(!u.appts || !u.appts.length){ el.innerHTML = '<div class="meta">ยังไม่มีการขอนัด</div>'; return; }
-  el.innerHTML = u.appts.map(a=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${a.time} → ถึง: ${a.teacher} [${a.status}]</div><div>${a.msg}</div><div class="meta">หมายเหตุครู: ${a.teacherNote || '-'}</div></div>`).join('');
+  el.innerHTML = u.appts.slice().reverse().map(a=>`<div class="diary-item"><div class="meta">${a.time} → ถึง: ${a.teacher} [${a.status}]</div><div>${a.msg}</div><div class="meta">หมายเหตุครู: ${a.teacherNote || '-'}</div></div>`).join('');
 }
 
 /* activity and initial render */
 renderActivity();
 renderAll();
 setInterval(()=>{ renderTeacherChart(); },5000);
+
+/* helper: escapeHtml to prevent basic injection in diary display */
+function escapeHtml(unsafe){
+  return unsafe ? unsafe.replace(/[&<"'>]/g, function(m){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]; }) : '';
+}
 
 </script>
 </body>
