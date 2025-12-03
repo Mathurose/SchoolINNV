@@ -55,10 +55,10 @@
   .redeem-item{display:flex;align-items:center;gap:12px;padding:10px;border-radius:10px;border:1px solid rgba(124,58,237,0.04);background:#fff}
   .flagged { color: var(--danger); font-weight:700; padding:4px 8px; border-radius:8px; background:#fff0f2; display:inline-block; }
   .card strong, .card h4, .badge { background: var(--card); padding: 6px 8px; border-radius: 8px; display: inline-block; }
-  @media(max-width:980px){.grid{grid-template-columns:1fr} .teacher-mood-row{flex-direction:column} }
   .pastel-legend{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px}
   .legend-item{display:flex;align-items:center;gap:8px}
   .legend-swatch{width:12px;height:12px;border-radius:3px}
+  @media(max-width:980px){.grid{grid-template-columns:1fr} .teacher-mood-row{flex-direction:column} }
 </style>
 </head>
 <body>
@@ -203,7 +203,7 @@
           <div class="card" style="margin-top:12px">
             <div style="display:flex;gap:12px;align-items:center">
               <div>
-                <label>โหมดสถิติ</label>
+                <label>โหมดสถิติ (ช่วง/กลุ่ม)</label>
                 <div class="segmented" style="margin-top:6px">
                   <button class="teacherModeBtn active" data-mode="student">รายบุคคล</button>
                   <button class="teacherModeBtn" data-mode="class">รายห้องเรียน</button>
@@ -232,25 +232,53 @@
             <div class="muted small" style="margin-top:8px">สามารถเปลี่ยนโหมดเป็นรายบุคคล / ห้อง / ชั้นปี แล้วกด "แสดงกราฟ"</div>
           </div>
 
-          <!-- Teacher mood pies for teacher and selected student -->
+          <!-- Teacher stat view selector: self / student / risk -->
           <div class="card" style="margin-top:12px">
-            <h4>สถิติอารมณ์ประจำวัน (ครู และ นักเรียนที่เลือก)</h4>
-            <div style="display:flex;gap:12px;align-items:flex-start" class="teacher-mood-row">
-              <div style="width:260px">
-                <strong>ครู (ของฉัน)</strong>
-                <div style="width:220px;height:220px;margin-top:10px"><canvas id="teacherSelfMoodPie"></canvas></div>
-                <div id="teacherSelfLegend" class="pastel-legend"></div>
-              </div>
-              <div style="width:260px">
-                <strong>นักเรียน (ที่เลือก)</strong>
-                <div style="width:220px;height:220px;margin-top:10px"><canvas id="teacherStudentMoodPie"></canvas></div>
-                <div id="teacherStudentLegend" class="pastel-legend"></div>
+            <div style="display:flex;align-items:center;justify-content:space-between">
+              <div><strong>โหมดสถิติรายวัน (Teacher)</strong><div class="muted">เลือกแสดงข้อมูลอารมณ์ประจำวันของครู / นักเรียน หรือรายการนักเรียนที่มีความเสี่ยง</div></div>
+              <div>
+                <div class="segmented" id="teacherStatTypeSeg">
+                  <button class="statTypeBtn active" data-type="self">ของฉัน</button>
+                  <button class="statTypeBtn" data-type="student">ของนักเรียน</button>
+                  <button class="statTypeBtn" data-type="risk">นักเรียนเสี่ยง</button>
+                </div>
               </div>
             </div>
-            <div class="muted small" style="margin-top:8px">เลือกนักเรียนจากเมนูด้านบนเพื่ออัปเดตกราฟ</div>
+
+            <div id="teacherStatArea" style="margin-top:12px">
+              <!-- self pie -->
+              <div id="teacherStatSelf" style="display:block">
+                <strong>สถิติอารมณ์วันนี้ — ครู (ตัวเอง)</strong>
+                <div style="display:flex;gap:12px;align-items:center;margin-top:12px">
+                  <div style="width:220px;height:220px"><canvas id="teacherSelfMoodPie"></canvas></div>
+                  <div style="flex:1">
+                    <div id="teacherSelfLegend" class="pastel-legend"></div>
+                    <div class="muted small" style="margin-top:8px">ข้อมูลจากบันทึกปัจจุบันของครู</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- selected student pie -->
+              <div id="teacherStatStudent" style="display:none">
+                <strong>สถิติอารมณ์วันนี้ — นักเรียนที่เลือก</strong>
+                <div style="display:flex;gap:12px;align-items:center;margin-top:12px">
+                  <div style="width:220px;height:220px"><canvas id="teacherStudentMoodPie"></canvas></div>
+                  <div style="flex:1">
+                    <div id="teacherStudentLegend" class="pastel-legend"></div>
+                    <div class="muted small" style="margin-top:8px">เลือกนักเรียนจากเมนูด้านบนเพื่ออัปเดตกราฟ</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- risk list -->
+              <div id="teacherStatRisk" style="display:none">
+                <strong>รายการนักเรียนที่มีความเสี่ยง (อารมณ์/พฤติกรรม)</strong>
+                <div id="teacherRiskListStat" class="list" style="margin-top:8px"></div>
+              </div>
+            </div>
           </div>
 
-          <!-- Student list with add/remove star controls -->
+          <!-- Student list with add/remove star controls (separate function) -->
           <div class="card" style="margin-top:12px">
             <div style="display:flex;align-items:center;justify-content:space-between">
               <div><strong>รายชื่อนักเรียน</strong></div>
@@ -259,10 +287,10 @@
             <div id="studentsList" class="list" style="margin-top:10px"></div>
           </div>
 
-          <!-- Report to advisor card with star adjust -->
+          <!-- Report to advisor card (no star adjust here) -->
           <div class="card" style="margin-top:12px">
             <div style="display:flex;align-items:center;justify-content:space-between">
-              <div><strong>ส่งรายงานพฤติกรรมนักเรียนให้ครูที่ปรึกษา</strong><div class="meta">สร้างรายงานและส่งตรงถึงครูที่ปรึกษา/หัวหน้าห้อง (พร้อมเพิ่ม/ลดดาว)</div></div>
+              <div><strong>ส่งรายงานพฤติกรรมนักเรียนให้ครูที่ปรึกษา</strong><div class="meta">สร้างรายงานและส่งตรงถึงครูที่ปรึกษา/หัวหน้าห้อง (ฟังก์ชันแยกจากการเพิ่ม/ลดดาว)</div></div>
             </div>
             <div style="margin-top:10px">
               <label>เลือกนักเรียน (จำลอง)</label>
@@ -275,17 +303,9 @@
               <div style="display:flex;gap:8px;margin-top:10px;align-items:center">
                 <button id="sendReportToAdvisor">ส่งรายงาน</button>
                 <button id="clearReportFields" class="btn-ghost">ล้างฟิลด์</button>
-                <div style="margin-left:8px">
-                  <label class="meta">ปรับดาวนักเรียน</label>
-                  <div style="display:flex;gap:8px;margin-top:6px">
-                    <button id="incStarBtn" class="btn-ghost">เพิ่มดาว +1</button>
-                    <button id="decStarBtn" class="btn-ghost">ลดดาว −1</button>
-                    <div id="starAdjustInfo" class="muted small" style="margin-left:6px"></div>
-                  </div>
-                </div>
+                <div id="reportSendResult" style="margin-left:12px" class="muted small"></div>
               </div>
 
-              <div id="reportSendResult" style="margin-top:8px" class="muted small"></div>
             </div>
           </div>
 
@@ -399,14 +419,13 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-/* v6 — Adds:
- 1) Student dashboard: daily mood pie chart (pastel colors)
- 2) Teacher dashboard: daily mood pie charts for teacher (self) and selected student
- 3) Student appointment can choose predefined simulated teachers
- 4) Teacher report UI allows choosing simulated students and adjust stars (+/-) while saving report
+/* v7 — Teacher dashboard updates:
+ 1) teacher can switch stat view: self / student / risk
+ 2) reporting student does NOT change stars
+ 3) star add/remove remains available separately in student list
 */
 
-/* ---------- config ---------- */
+/* ---------- config & basic state ---------- */
 const STORAGE_KEY = 'litevibe_data_v6';
 const emojiChoices = [
   {key:'very_happy', emoji:'😄', label:'มีความสุขมาก', color:'#FFD166'},
@@ -425,7 +444,7 @@ let teacherStudentPie = null;
 let adminMoodChart = null;
 let adminBehaviorChart = null;
 
-/* ---------- storage & seed ---------- */
+/* ---------- storage helpers ---------- */
 function defaultState(){ return { users: {}, activity: [], redeemRequests: [] }; }
 function seedSampleData(s){
   s.users['khonmek'] = { name:'khonmek', display:'ก้อนเมฆ', role:'student', classId:'M1A', grade:'ม.1', stars:5, avatar:'', moods:[], diaries:[], appts:[], redeemHistory:[], quiz:[], reports:[] };
@@ -459,7 +478,7 @@ function loadState(){
 }
 function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
-/* ---------- utilities ---------- */
+/* ---------- util ---------- */
 function generateId(){ return 'id_' + Math.random().toString(36).slice(2,9); }
 function logActivity(txt){ const time = new Date().toLocaleString(); state.activity.unshift({txt,time}); saveState(); renderActivity(); }
 function hexToRgba(hex,a){ if(!hex) return `rgba(124,58,237,${a})`; if(hex.startsWith('#')) hex=hex.slice(1); const bigint=parseInt(hex,16); const r=(bigint>>16)&255; const g=(bigint>>8)&255; const b=bigint&255; return `rgba(${r},${g},${b},${a})`; }
@@ -515,7 +534,7 @@ document.getElementById('logoutBtn').addEventListener('click', ()=> {
   document.getElementById('currentUserBox').innerText = '';
 });
 
-/* ---------- Profile & Avatar ---------- */
+/* ---------- profile/avatar ---------- */
 const avatarInput = document.getElementById('avatarInput');
 avatarInput.addEventListener('change', (e)=>{
   if(!currentUser) return alert('กรุณาเข้าสู่ระบบก่อนอัปโหลดรูป');
@@ -524,7 +543,7 @@ avatarInput.addEventListener('change', (e)=>{
 });
 document.getElementById('removeAvatar').addEventListener('click', ()=>{ if(!currentUser) return alert('กรุณาเข้าสู่ระบบ'); if(!confirm('ต้องการลบรูปประจำตัวหรือไม่?')) return; state.users[currentUser].avatar=''; saveState(); renderAll(); });
 
-/* ---------- Mood buttons & save ---------- */
+/* ---------- mood buttons & save ---------- */
 function renderMoodButtons(containerId){
   const container = document.getElementById(containerId);
   if(!container) return;
@@ -550,39 +569,30 @@ document.getElementById('saveStudentMoodBtn').addEventListener('click', ()=>{
   saveState(); logActivity(`${currentUser} บันทึกอารมณ์: ${meta.emoji} ${meta.label}`); document.getElementById('studentDiaryText').value=''; Array.from(document.querySelectorAll('#studentMoodButtons .emoji-btn')).forEach(b=>b.classList.remove('selected')); renderAll();
 });
 
-/* ---------- Helper: get mood counts for a date ---------- */
+/* ---------- helper: mood counts for today ---------- */
 function getMoodCountsForDate(user, dateIso){
-  const result = {};
-  emojiChoices.forEach(e=> result[e.label]=0);
+  const result = {}; emojiChoices.forEach(e=> result[e.label]=0);
   if(!user || !user.moods) return result;
-  const d = new Date(dateIso);
   user.moods.forEach(m=>{
-    try{
-      if(isSameDayIso(m.iso, dateIso)){
-        result[m.label] = (result[m.label]||0) + 1;
-      }
-    }catch(e){}
+    if(isSameDayIso(m.iso, dateIso)) result[m.label] = (result[m.label]||0) + 1;
   });
   return result;
 }
 
-/* ---------- Pies rendering ---------- */
+/* ---------- pies ---------- */
 function renderStudentDailyPie(){
   const canvas = document.getElementById('studentDailyMoodPie');
   if(!canvas || !currentUser) return;
   const user = state.users[currentUser];
   const counts = getMoodCountsForDate(user, new Date().toISOString());
-  const labels = []; const data=[]; const bg=[];
-  emojiChoices.forEach(e=>{ const cnt = counts[e.label]||0; labels.push(e.label); data.push(cnt); bg.push(e.color); });
+  const labels=[]; const data=[]; const bg=[];
+  emojiChoices.forEach(e=>{ labels.push(e.label); data.push(counts[e.label]||0); bg.push(e.color); });
   if(studentDailyPie) studentDailyPie.destroy();
   studentDailyPie = new Chart(canvas.getContext('2d'), { type:'pie', data:{ labels, datasets:[{ data, backgroundColor:bg }] }, options:{ responsive:true, plugins:{legend:{position:'bottom'}} } });
-  // build legend
-  const legend = document.getElementById('studentDailyLegend'); legend.innerHTML = '';
-  labels.forEach((l,i)=> legend.innerHTML += `<div class="legend-item"><div class="legend-swatch" style="background:${bg[i]}"></div><div>${l}: ${data[i]}</div></div>`);
+  const legend = document.getElementById('studentDailyLegend'); legend.innerHTML=''; labels.forEach((l,i)=> legend.innerHTML += `<div class="legend-item"><div class="legend-swatch" style="background:${bg[i]}"></div><div>${l}: ${data[i]}</div></div>`);
 }
 
 function renderTeacherMoodPies(selectedStudentName){
-  // teacher self
   const selfCanvas = document.getElementById('teacherSelfMoodPie');
   const studentCanvas = document.getElementById('teacherStudentMoodPie');
   if(currentUser && state.users[currentUser]){
@@ -593,7 +603,6 @@ function renderTeacherMoodPies(selectedStudentName){
     teacherSelfPie = new Chart(selfCanvas.getContext('2d'), { type:'pie', data:{ labels, datasets:[{ data, backgroundColor:bg }] }, options:{ responsive:true, plugins:{legend:{display:false}} } });
     const legend = document.getElementById('teacherSelfLegend'); legend.innerHTML=''; labels.forEach((l,i)=> legend.innerHTML += `<div class="legend-item"><div class="legend-swatch" style="background:${bg[i]}"></div><div>${l}: ${data[i]}</div></div>`);
   }
-  // selected student
   const s = state.users[selectedStudentName];
   const studentCounts = getMoodCountsForDate(s || {}, new Date().toISOString());
   const labels2=[]; const data2=[]; const bg2=[];
@@ -623,7 +632,7 @@ document.getElementById('requestAppt').addEventListener('click', ()=>{
   saveState(); logActivity(`${currentUser} ขอเข้าปรึกษากับ ${teacher}`); alert('ส่งคำขอนัดเรียบร้อย'); document.getElementById('apptMsg').value=''; renderAll();
 });
 
-/* ---------- Students list + modify stars (teacher) ---------- */
+/* ---------- Students list & star modify (teacher) ---------- */
 function renderStudentsList(){
   const q = document.getElementById('searchStudent')?.value.trim().toLowerCase();
   const container = document.getElementById('studentsList'); if(!container) return;
@@ -660,7 +669,7 @@ function modifyStars(studentName, delta){
   renderProfile(); renderQuickPanel();
 }
 
-/* ---------- Report to advisor with optional star adjust ---------- */
+/* ---------- Report to advisor (no star changes here) ---------- */
 function populateReportSelectors(){
   const studentSel = document.getElementById('reportStudentSelect');
   const advSel = document.getElementById('reportAdvisorSelect');
@@ -672,21 +681,7 @@ document.getElementById('clearReportFields')?.addEventListener('click', ()=>{
   document.getElementById('reportAdvisorSelect').value='';
   document.getElementById('reportTextToAdvisor').value='';
   document.getElementById('reportSendResult').innerText='';
-  document.getElementById('starAdjustInfo').innerText='';
 });
-document.getElementById('incStarBtn')?.addEventListener('click', ()=>{
-  const student = document.getElementById('reportStudentSelect').value;
-  if(!student) return alert('เลือกลูกศิษย์ก่อนปรับดาว');
-  modifyStars(student,1);
-  document.getElementById('starAdjustInfo').innerText = `ปรับ +1 ให้ ${state.users[student].display||student}`;
-});
-document.getElementById('decStarBtn')?.addEventListener('click', ()=>{
-  const student = document.getElementById('reportStudentSelect').value;
-  if(!student) return alert('เลือกลูกศิษย์ก่อนปรับดาว');
-  modifyStars(student,-1);
-  document.getElementById('starAdjustInfo').innerText = `ปรับ -1 ให้ ${state.users[student].display||student}`;
-});
-
 document.getElementById('sendReportToAdvisor')?.addEventListener('click', ()=>{
   if(!currentUser) return alert('กรุณาเข้าสู่ระบบ');
   const sender = state.users[currentUser];
@@ -695,7 +690,7 @@ document.getElementById('sendReportToAdvisor')?.addEventListener('click', ()=>{
   const advisorName = document.getElementById('reportAdvisorSelect').value;
   const text = document.getElementById('reportTextToAdvisor').value.trim();
   if(!studentName || !advisorName || !text) return alert('กรุณาเลือกนักเรียน เลือกครูที่ปรึกษา และกรอกเนื้อหาหรือบันทึก');
-  // simple local analysis (flagging) reused from prior versions (minimal)
+  // simple local analysis (flagging)
   const lower = text.toLowerCase();
   const NEG = ['ตี','ทำร้าย','ทะเลาะ','โดนรังแก','กลั่นแกล้ง','หนีเรียน','ขาดเรียน','โดดเรียน','ซึมเศร้า','เครียด','คิดสั้น','ทำร้ายตัวเอง','ติดยา','เสพยา','เมา','รังแก','เกเร','พกของมีคม'];
   const matches = NEG.filter(k => lower.includes(k));
@@ -710,7 +705,7 @@ document.getElementById('sendReportToAdvisor')?.addEventListener('click', ()=>{
   renderAll();
 });
 
-/* ---------- Render advisor inbox ---------- */
+/* ---------- render advisor inbox ---------- */
 function renderAdvisorInbox(){
   const el = document.getElementById('advisorInbox');
   if(!currentUser || !el) return;
@@ -730,9 +725,27 @@ function renderAdvisorInbox(){
   }).join('');
 }
 
-/* ---------- Charts: admin mood (reused) ---------- */
+/* ---------- risk & charts (minimal reused) ---------- */
+function studentRiskInfo(student){
+  const reasons=[]; const now=new Date(); const moods=student.moods||[]; const negativeLabels=['เศร้า','โกรธ','เหนื่อย']; const sevenDaysAgo=new Date(); sevenDaysAgo.setDate(now.getDate()-7); const recent=moods.filter(m=>m.iso && new Date(m.iso)>=sevenDaysAgo); const negCount = recent.reduce((acc,m)=> acc + (negativeLabels.includes(m.label)?1:0),0); if(negCount>=2) reasons.push(`มี ${negCount} ครั้งของอารมณ์เชิงลบใน 7 วันล่าสุด`); const thirtyDaysAgo=new Date(); thirtyDaysAgo.setDate(now.getDate()-30); const reports=(student.reports||[]).filter(r=> r.time && new Date(r.time)>=thirtyDaysAgo); const flaggedReports = reports.filter(r=> r.flagged); if(flaggedReports.length>=1) reasons.push(`พบ ${flaggedReports.length} รายงานเชิงลบใน 30 วัน`); const rptCount=(student.reports||[]).length; if(rptCount>=3) reasons.push(`มี ${rptCount} รายงานพฤติกรรมทั้งหมด`); let level=null; if(reasons.length>=2) level='high'; else if(reasons.length===1) level='medium'; else level=null; return { level, reasons, flaggedReportsCount: flaggedReports.length };
+}
+function buildRiskLists(){ const students=Object.values(state.users).filter(u=>u.role==='student'); const risks=students.map(s=>({ student:s, info: studentRiskInfo(s) })).filter(x=>x.info.level); risks.sort((a,b)=>{ const score=l=> l==='high'?2:(l==='medium'?1:0); return score(b.info.level)-score(a.info.level); }); return risks; }
+
+function renderTeacherRiskListArea(){
+  const el = document.getElementById('teacherRiskListStat');
+  if(!el) return;
+  const risks = buildRiskLists();
+  if(!risks.length){ el.innerHTML = '<div class="meta">ยังไม่มีนักเรียนที่อยู่ในเกณฑ์เสี่ยง</div>'; return; }
+  el.innerHTML = risks.map(r=>{
+    const s=r.student; const levelClass = r.info.level==='high'?'risk-high':'risk-medium'; const reasons = r.info.reasons.join(' • ');
+    const avatar = s.avatar ? `<div class="student-avatar"><img src="${s.avatar}"></div>` : `<div class="student-avatar">${(s.display||s.name).slice(0,2).toUpperCase()}</div>`;
+    return `<div class="risk-item">${avatar}<div style="flex:1"><div><strong>${s.display||s.name}</strong> <div class="meta">${s.classId||'-'} • ${s.grade||'-'}</div></div><div class="meta" style="margin-top:6px">${reasons}</div></div><div><div class="risk-badge ${levelClass}">${r.info.level==='high'?'เสี่ยงสูง':'เสี่ยงปานกลาง'}</div></div></div>`;
+  }).join('');
+}
+
+/* admin charts */
 function renderAdminMoodChart(){
-  const el = document.getElementById('adminMoodChart'); if(!el) return;
+  const el = document.getElementById('adminMoodChart'); if(!el || !state) return;
   const moodCounts = {}; emojiChoices.forEach(e=> moodCounts[e.label]=0);
   const students = Object.values(state.users).filter(u=>u.role==='student');
   students.forEach(s=>{ if(s.moods && s.moods.length){ const last=s.moods[s.moods.length-1]; moodCounts[last.label] = (moodCounts[last.label]||0)+1; }});
@@ -740,57 +753,28 @@ function renderAdminMoodChart(){
   if(adminMoodChart) adminMoodChart.destroy();
   adminMoodChart = new Chart(el.getContext('2d'), { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:bg }] }, options:{ responsive:true, plugins:{legend:{position:'bottom'}} } });
 }
+function renderAdminBehaviorChart(){
+  const students = Object.values(state.users).filter(u=>u.role==='student'); const counts={high:0,medium:0,none:0};
+  students.forEach(s=>{ const info=studentRiskInfo(s); if(info.level==='high') counts.high++; else if(info.level==='medium') counts.medium++; else counts.none++; });
+  const ctx = document.getElementById('adminBehaviorRiskChart')?.getContext('2d'); if(!ctx) return;
+  if(adminBehaviorChart) adminBehaviorChart.destroy();
+  adminBehaviorChart = new Chart(ctx, { type:'doughnut', data:{ labels:['เสี่ยงสูง','เสี่ยงปานกลาง','ปกติ'], datasets:[{ data:[counts.high,counts.medium,counts.none], backgroundColor:['#ef4444','#f59e0b','#7c3aed'] }] }, options:{ responsive:true, plugins:{legend:{position:'bottom'}} } });
+}
+function renderBehaviorCharts(){ renderAdminBehaviorChart(); renderTeacherBehaviorChart(); }
 
-/* ---------- Render panels & other utilities ---------- */
+/* ---------- render helpers ---------- */
 function renderProfile(){
-  const avatarBox = document.getElementById('profileAvatar');
-  const nameEl = document.getElementById('profileName'); const roleEl = document.getElementById('profileRole'); const classEl = document.getElementById('profileClass');
-  const starsWrap = document.getElementById('profileStarsWrap'); const starsEl = document.getElementById('profileStars');
-  const box = document.getElementById('profileBox');
+  const avatarBox = document.getElementById('profileAvatar'); const nameEl = document.getElementById('profileName'); const roleEl = document.getElementById('profileRole'); const classEl = document.getElementById('profileClass'); const starsWrap = document.getElementById('profileStarsWrap'); const starsEl = document.getElementById('profileStars'); const box = document.getElementById('profileBox');
   if(!currentUser){ avatarBox.innerHTML='LV'; nameEl.innerHTML='<strong>-</strong>'; roleEl.innerText='-'; classEl.innerText=''; starsWrap.style.display='inline-block'; starsEl.innerText='0'; box.innerHTML='เข้าสู่ระบบเพื่อดูโปรไฟล์'; return; }
   const u = state.users[currentUser];
-  avatarBox.innerHTML=''; if(u.avatar){ const img = document.createElement('img'); img.src=u.avatar; avatarBox.appendChild(img); } else avatarBox.innerText=(u.display||u.name).slice(0,2).toUpperCase();
-  nameEl.innerHTML=`<strong>${u.display||u.name}</strong>`; roleEl.innerText = u.role;
-  classEl.innerText = (u.role==='student'? `ชั้นเรียน: ${u.classId||'-'} • ${u.grade||'-'}` : '');
+  avatarBox.innerHTML=''; if(u.avatar){ const img=document.createElement('img'); img.src=u.avatar; avatarBox.appendChild(img); } else avatarBox.innerText=(u.display||u.name).slice(0,2).toUpperCase();
+  nameEl.innerHTML=`<strong>${u.display||u.name}</strong>`; roleEl.innerText = u.role; classEl.innerText = (u.role==='student'? `ชั้นเรียน: ${u.classId||'-'} • ${u.grade||'-'}` : '');
   if(u.role==='teacher' || u.role==='admin') starsWrap.style.display='none'; else { starsWrap.style.display='inline-block'; starsEl.innerText = u.stars||0; }
   let html = `<div class="meta">บันทึกล่าสุด:</div>`;
   if(u.moods && u.moods.length){ const last = u.moods[u.moods.length-1]; html += `<div style="margin-top:6px">${last.time} — ${last.emoji} ${last.label}</div><div class="muted" style="margin-top:6px">${last.note||'-'}</div>`; } else html += `<div class="muted" style="margin-top:6px">ยังไม่มีบันทึก</div>`;
   box.innerHTML = html;
 }
 
-function renderPanels(){
-  if(!currentUser) return;
-  const u = state.users[currentUser];
-  document.getElementById('studentPanel').style.display = u.role==='student' ? 'block' : 'none';
-  document.getElementById('teacherPanel').style.display = u.role==='teacher' ? 'block' : 'none';
-  document.getElementById('adminPanel').style.display = u.role==='admin' ? 'block' : 'none';
-
-  // Student-specific
-  if(u.role==='student'){
-    document.getElementById('lastStudentMoodText').innerText = u.moods && u.moods.length ? `${u.moods[u.moods.length-1].emoji} ${u.moods[u.moods.length-1].label} — ${u.moods[u.moods.length-1].time}` : '-';
-    renderDiaryHistoryForUser(u, 'studentDiaryHistory');
-    renderTodayMoodForStudent();
-    renderStudentDailyPie();
-    populateTeachersForAppt();
-    renderApptHistoryForStudent();
-  }
-
-  // Teacher-specific
-  if(u.role==='teacher'){
-    renderApptRequests(); renderReportsList(); populateReportSelectors(); renderStudentsList(); renderAdvisorInbox(); renderTeacherBehaviorChart();
-    // initialize teacher mood pies (selected student from teacherSelect if exists)
-    const sel = document.getElementById('teacherSelect')?.value || document.getElementById('reportStudentSelect')?.value;
-    renderTeacherMoodPies(sel);
-  }
-
-  // Admin
-  if(u.role==='admin'){ renderAdminMoodChart(); renderBehaviorCharts(); }
-
-  renderQuickPanel();
-  renderActivity();
-}
-
-/* diary history display */
 function renderDiaryHistoryForUser(user, containerId){
   const el = document.getElementById(containerId); if(!el) return;
   if(!user.diaries || !user.diaries.length){ el.innerHTML = '<div class="meta">ยังไม่มีบันทึก My diary</div>'; return; }
@@ -801,7 +785,6 @@ function renderDiaryHistoryForUser(user, containerId){
   }).join('');
 }
 
-/* today's mood card for student */
 function renderTodayMoodForStudent(){
   const el = document.getElementById('todayMoodDisplay'); if(!el) return;
   if(!currentUser) { el.style.display='none'; return; }
@@ -815,9 +798,6 @@ function renderTodayMoodForStudent(){
   document.getElementById('todayMoodNote').innerText = last.note ? escapeHtml(last.note) : '-';
   el.style.display='block';
 }
-
-/* ---------- some minimal retained functions for appt/redeem/report/risks/charts ---------- */
-/* To keep this file focused on requested features, we include essential helpers used above. */
 
 function renderApptHistoryForStudent(){
   const el = document.getElementById('apptHistory'); if(!el || !currentUser) return;
@@ -838,29 +818,31 @@ function renderApptRequests(){
 function handleApptAction(id,status){ const t = state.users[currentUser]; const item = (t.inbox||[]).find(x=>x.id===id); if(!item) return; item.status = status; const stu = state.users[item.student]; if(stu){ const ap = stu.appts.find(x=>x.id===id); if(ap) ap.status = status; } saveState(); logActivity(`${currentUser} ${status==='approved'?'อนุมัติ':'ปฏิเสธ'} นัดจาก ${item.student}`); renderAll(); }
 function handleApptNote(id,note){ const t = state.users[currentUser]; const item = (t.inbox||[]).find(x=>x.id===id); if(!item) return; item.teacherNote = note; const stu = state.users[item.student]; if(stu){ const ap = stu.appts.find(x=>x.id===id); if(ap) ap.teacherNote = note; } saveState(); logActivity(`${currentUser} บันทึกหมายเหตุนัด ${item.student}`); renderAll(); }
 
-/* redeem requests minimal */
-function renderTeacherRedeemRequests(){
-  const el = document.getElementById('teacherRedeemRequests'); if(!el) return;
-  const pending = (state.redeemRequests||[]).filter(r=>r.status==='pending');
-  if(!pending.length){ el.innerHTML = '<div class="meta">ยังไม่มีคำขอแลกจากนักเรียน</div>'; return; }
-  el.innerHTML = pending.slice().reverse().map(r=>{
-    const s = state.users[r.student];
-    const avatar = s && s.avatar ? `<div class="student-avatar"><img src="${s.avatar}"></div>` : `<div class="student-avatar">${(s? s.display : r.student).slice(0,2).toUpperCase()}</div>`;
-    return `<div style="padding:8px;border-bottom:1px solid #f3f6fb;display:flex;gap:10px;align-items:center">${avatar}<div style="flex:1"><div><strong>${s? s.display : r.student}</strong> <span class="meta">${s? (s.classId || '') + ' • ' + (s.grade || '') : ''}</span></div><div class="meta" style="margin-top:6px">${r.item} — ${r.cost} ⭐</div><div class="meta" style="margin-top:6px">ส่ง: ${r.time}</div></div><div style="display:flex;flex-direction:column;gap:6px"><button class="approveRedeemBtn" data-id="${r.id}">อนุมัติ</button><button class="rejectRedeemBtn btn-ghost" data-id="${r.id}">ไม่อนุมัติ</button></div></div>`;
-  }).join('');
-  document.querySelectorAll('.approveRedeemBtn').forEach(b=>b.addEventListener('click', e=> handleApproveRedeem(e.target.dataset.id)));
-  document.querySelectorAll('.rejectRedeemBtn').forEach(b=>b.addEventListener('click', e=> handleRejectRedeem(e.target.dataset.id)));
-}
-function handleApproveRedeem(id){ if(!currentUser) return alert('กรุณาเข้าสู่ระบบเป็นครูเพื่ออนุมัติ'); const req=(state.redeemRequests||[]).find(r=>r.id===id); if(!req) return alert('ไม่พบคำขอ'); const student=state.users[req.student]; if(!student) return alert('ไม่พบข้อมูลนักเรียน'); if((student.stars||0) < req.cost) if(!confirm(`นักเรียนมีดาวไม่พอ (${student.stars||0} ⭐) จะอนุมัติแล้วหักดาวลงไปหรือไม่?`)) return; student.stars = Math.max(0,(student.stars||0)-req.cost); student.redeemHistory = student.redeemHistory||[]; student.redeemHistory.push({ item:req.item, cost:req.cost, time:new Date().toLocaleString(), approvedBy: state.users[currentUser].display||currentUser }); req.status='approved'; req.approvedBy = state.users[currentUser].display||currentUser; saveState(); logActivity(`${currentUser} อนุมัติ: ${req.item} ของ ${student.name}`); renderAll(); }
-function handleRejectRedeem(id){ if(!currentUser) return alert('กรุณาเข้าสู่ระบบเป็นครู'); const req=(state.redeemRequests||[]).find(r=>r.id===id); if(!req) return alert('ไม่พบคำขอ'); req.status='rejected'; req.approvedBy=state.users[currentUser].display||currentUser; saveState(); logActivity(`${currentUser} ปฏิเสธคำขอของ ${req.student}`); renderAll(); }
+/* ---------- teacher stat type controls ---------- */
+document.getElementById('teacherStatTypeSeg')?.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.statTypeBtn');
+  if(!btn) return;
+  document.querySelectorAll('.statTypeBtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  const type = btn.dataset.type;
+  document.getElementById('teacherStatSelf').style.display = type==='self' ? 'block' : 'none';
+  document.getElementById('teacherStatStudent').style.display = type==='student' ? 'block' : 'none';
+  document.getElementById('teacherStatRisk').style.display = type==='risk' ? 'block' : 'none';
+  // render relevant data
+  if(type==='self') renderTeacherMoodPies(document.getElementById('teacherSelect')?.value);
+  if(type==='student') renderTeacherMoodPies(document.getElementById('teacherSelect')?.value);
+  if(type==='risk') renderTeacherRiskListArea();
+});
 
-/* reports list for teacher (reports they created) */
-function renderReportsList(){ const all=[]; Object.values(state.users).forEach(u=>{ if(u.reports) u.reports.forEach(r=>{ if(r.teacher===currentUser) all.push(r); })}); const el=document.getElementById('reportsList'); if(!el) return; if(!all.length){ el.innerHTML='<div class="meta">ยังไม่มีรายงาน</div>'; return; } el.innerHTML = all.map(r=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${r.time} → ${r.student}</div><div>${escapeHtml(r.text)}</div></div>`).join(''); }
+/* ---------- teacher select change updates student pie when in student stat mode ---------- */
+document.getElementById('teacherSelect')?.addEventListener('change', ()=>{
+  const type = document.querySelector('.statTypeBtn.active')?.dataset.type;
+  const selected = document.getElementById('teacherSelect')?.value;
+  if(type==='student') renderTeacherMoodPies(selected);
+  renderTeacherBehaviorChart();
+});
 
-/* risk detection & behavior charts (minimal, reused) */
-function studentRiskInfo(student){ const reasons=[]; const now=new Date(); const moods=student.moods||[]; const negativeLabels=['เศร้า','โกรธ','เหนื่อย']; const sevenDaysAgo=new Date(); sevenDaysAgo.setDate(now.getDate()-7); const recent=moods.filter(m=>m.iso && new Date(m.iso)>=sevenDaysAgo); const negCount = recent.reduce((acc,m)=> acc + (negativeLabels.includes(m.label)?1:0),0); if(negCount>=2) reasons.push(`มี ${negCount} ครั้งของอารมณ์เชิงลบใน 7 วันล่าสุด`); const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(now.getDate()-30); const reports = (student.reports||[]).filter(r=> r.time && new Date(r.time) >= thirtyDaysAgo); const flaggedReports = reports.filter(r=> r.flagged); if(flaggedReports.length>=1) reasons.push(`พบ ${flaggedReports.length} รายงานเชิงลบใน 30 วัน`); const rptCount=(student.reports||[]).length; if(rptCount>=3) reasons.push(`มี ${rptCount} รายงานพฤติกรรมทั้งหมด`); let level=null; if(reasons.length>=2) level='high'; else if(reasons.length===1) level='medium'; else level=null; return { level, reasons, flaggedReportsCount: flaggedReports.length }; }
-function buildRiskLists(){ const students=Object.values(state.users).filter(u=>u.role==='student'); const risks=students.map(s=>({ student:s, info: studentRiskInfo(s) })).filter(x=>x.info.level); risks.sort((a,b)=>{ const score=l=> l==='high'?2:(l==='medium'?1:0); return score(b.info.level)-score(a.info.level); }); return risks; }
-
+/* ---------- admin & teacher behavior rendering on init ---------- */
 function renderTeacherBehaviorChart(){
   const mode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student';
   const labels=[]; const data=[];
@@ -879,46 +861,64 @@ function renderTeacherBehaviorChart(){
   window.teacherBehaviorChart = new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label:'รายงานเชิงลบ (จำนวน)', data, backgroundColor: labels.map(()=>hexToRgba('#fb7185',0.9)) }] }, options:{ responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{precision:0}} } } });
 }
 
-function renderBehaviorCharts(){ renderAdminBehaviorChart(); renderTeacherBehaviorChart(); }
-function renderAdminBehaviorChart(){
-  const students = Object.values(state.users).filter(u=>u.role==='student'); const counts={high:0,medium:0,none:0};
-  students.forEach(s=>{ const info=studentRiskInfo(s); if(info.level==='high') counts.high++; else if(info.level==='medium') counts.medium++; else counts.none++; });
-  const ctx = document.getElementById('adminBehaviorRiskChart')?.getContext('2d'); if(!ctx) return;
-  if(adminBehaviorChart) adminBehaviorChart.destroy();
-  adminBehaviorChart = new Chart(ctx, { type:'doughnut', data:{ labels:['เสี่ยงสูง','เสี่ยงปานกลาง','ปกติ'], datasets:[{ data:[counts.high,counts.medium,counts.none], backgroundColor:['#ef4444','#f59e0b','#7c3aed'] }] }, options:{ responsive:true, plugins:{legend:{position:'bottom'}} } });
-}
-
 /* ---------- quick panel & activity ---------- */
 function renderQuickPanel(){ const el=document.getElementById('quickPanel'); if(!currentUser){ el.innerHTML=''; return; } const u=state.users[currentUser]; let html=`<div class="meta">บทบาท: ${u.role}</div>`; if(u.role==='student'){ html+=`<div style="margin-top:6px"><strong>ดาว: ${u.stars||0}</strong></div>`; html+=`<div class="meta" style="margin-top:6px">บันทึก: ${(u.diaries||[]).length} ครั้ง</div>`; } else if(u.role==='teacher'){ const pending=(u.inbox||[]).filter(i=>i.status==='pending').length; html+=`<div style="margin-top:6px"><strong>คำขอนัดรออนุมัติ: ${pending}</strong></div>`; } else if(u.role==='admin'){ const students = Object.values(state.users).filter(x=>x.role==='student').length; html+=`<div style="margin-top:6px"><strong>นักเรียนทั้งหมด: ${students}</strong></div>`; } el.innerHTML=html; }
 function renderActivity(){ const el=document.getElementById('activityLog'); if(!el) return; el.innerHTML = (state.activity||[]).map(a=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${a.time}</div><div>${a.txt}</div></div>`).join(''); }
 
-/* ---------- initial render & events ---------- */
+/* ---------- main render ---------- */
+function renderAll(){
+  populateUserSelect(); renderProfile(); renderPanels(); renderActivity(); renderTeacherControls(); renderAdminMoodChart(); renderBehaviorCharts(); renderStudentDailyPie(); renderTeacherMoodPies(document.getElementById('teacherSelect')?.value);
+}
+function renderPanels(){
+  if(!currentUser) return;
+  const u = state.users[currentUser];
+  document.getElementById('studentPanel').style.display = u.role==='student' ? 'block' : 'none';
+  document.getElementById('teacherPanel').style.display = u.role==='teacher' ? 'block' : 'none';
+  document.getElementById('adminPanel').style.display = u.role==='admin' ? 'block' : 'none';
+
+  if(u.role==='student'){
+    document.getElementById('lastStudentMoodText').innerText = u.moods && u.moods.length ? `${u.moods[u.moods.length-1].emoji} ${u.moods[u.moods.length-1].label} — ${u.moods[u.moods.length-1].time}` : '-';
+    renderDiaryHistoryForUser(u, 'studentDiaryHistory');
+    renderTodayMoodForStudent();
+    renderStudentDailyPie();
+    populateTeachersForAppt();
+    renderApptHistoryForStudent();
+  }
+  if(u.role==='teacher'){
+    renderApptRequests(); renderReportsList(); populateReportSelectors(); renderStudentsList(); renderAdvisorInbox(); renderTeacherBehaviorChart();
+    // ensure teacher stat view is synced
+    const activeType = document.querySelector('.statTypeBtn.active')?.dataset.type || 'self';
+    if(activeType === 'student') renderTeacherMoodPies(document.getElementById('teacherSelect')?.value);
+    else renderTeacherMoodPies(document.getElementById('teacherSelect')?.value);
+  }
+  if(u.role==='admin'){ renderAdminMoodChart(); renderBehaviorCharts(); }
+
+  renderQuickPanel();
+}
+
+/* ---------- teacher controls setup ---------- */
+function renderTeacherControls(){
+  updateTeacherSelectLabel();
+  populateReportSelectors();
+  populateTeachersForAppt();
+  renderStudentsList();
+  renderAdvisorInbox();
+}
+
+/* ---------- update teacher select options ---------- */
+function updateTeacherSelectLabel(){
+  const mode=document.querySelector('.teacherModeBtn.active')?.dataset.mode||'student'; const label=document.getElementById('teacherSelectLabel'); const sel=document.getElementById('teacherSelect'); if(!label||!sel) return; sel.innerHTML='';
+  if(mode==='student'){ label.innerText='เลือกนักเรียน'; Object.values(state.users).filter(u=>u.role==='student').forEach(s=>{ const opt=document.createElement('option'); opt.value=s.name; opt.innerText=`${s.display||s.name} • ${s.classId||''} ${s.grade||''}`; sel.appendChild(opt); }); }
+  else if(mode==='class'){ label.innerText='เลือกห้องเรียน'; const classes=Array.from(new Set(Object.values(state.users).filter(u=>u.role==='student').map(s=>s.classId||'ไม่ระบุ'))); classes.forEach(c=>{ const opt=document.createElement('option'); opt.value=c; opt.innerText=c; sel.appendChild(opt); }); }
+  else { label.innerText='เลือกชั้นปี'; const grades=Array.from(new Set(Object.values(state.users).filter(u=>u.role==='student').map(s=>s.grade||'ไม่ระบุ'))); grades.forEach(g=>{ const opt=document.createElement('option'); opt.value=g; opt.innerText=g; sel.appendChild(opt); }); }
+  if(sel.options.length) sel.selectedIndex = 0;
+}
+
+/* ---------- init ---------- */
 populateUserSelect();
 renderActivity();
 renderAll();
 
-document.querySelectorAll('.teacherModeBtn').forEach(b=>b.addEventListener('click', ()=>{
-  document.querySelectorAll('.teacherModeBtn').forEach(x=>x.classList.remove('active')); b.classList.add('active');
-  updateTeacherSelectLabel(); renderTeacherBehaviorChart();
-}));
-document.getElementById('teacherSelect')?.addEventListener('change', ()=> { const sel = document.getElementById('teacherSelect'); renderTeacherMoodPies(sel.value); });
-document.getElementById('teacherViewBtn')?.addEventListener('click', ()=> { const mode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student'; const id = document.getElementById('teacherSelect')?.value; const period = document.getElementById('teacherPeriod')?.value || 'week'; renderTeacherDetail(mode,id,period); });
-
-function renderAll(){ renderProfile(); renderPanels(); renderActivity(); renderTeacherControls(); renderAdminMoodChart(); renderBehaviorCharts(); renderStudentDailyPie(); renderTeacherMoodPies(document.getElementById('teacherSelect')?.value); }
-function renderTeacherControls(){ updateTeacherSelectLabel(); populateReportSelectors(); populateTeachersForAppt(); renderStudentsList(); renderAdvisorInbox(); renderTeacherBehaviorChart(); }
-function updateTeacherSelectLabel(){
-  const mode=document.querySelector('.teacherModeBtn.active')?.dataset.mode||'student'; const label=document.getElementById('teacherSelectLabel'); const sel=document.getElementById('teacherSelect'); if(!label||!sel) return; sel.innerHTML=''; if(mode==='student'){ label.innerText='เลือกนักเรียน'; Object.values(state.users).filter(u=>u.role==='student').forEach(s=>{ const opt=document.createElement('option'); opt.value=s.name; opt.innerText=`${s.display||s.name} • ${s.classId||''} ${s.grade||''}`; sel.appendChild(opt); }); } else if(mode==='class'){ label.innerText='เลือกห้องเรียน'; const classes=Array.from(new Set(Object.values(state.users).filter(u=>u.role==='student').map(s=>s.classId||'ไม่ระบุ'))); classes.forEach(c=>{ const opt=document.createElement('option'); opt.value=c; opt.innerText=c; sel.appendChild(opt); }); } else { label.innerText='เลือกชั้นปี'; const grades=Array.from(new Set(Object.values(state.users).filter(u=>u.role==='student').map(s=>s.grade||'ไม่ระบุ'))); grades.forEach(g=>{ const opt=document.createElement('option'); opt.value=g; opt.innerText=g; sel.appendChild(opt); }); } if(sel.options.length) sel.selectedIndex = 0; }
-
-/* teacher detail chart (reuse earlier aggregate functions if available) */
-function renderTeacherDetail(mode, id, period){
-  // minimal implementation: reuse aggregateByPeriod from previous versions (not included in full here)
-  // we'll show placeholder behavior if no data
-  const ctx = document.getElementById('teacherDetailChart')?.getContext('2d'); if(!ctx) return;
-  if(window.teacherDetailChart) window.teacherDetailChart.destroy();
-  window.teacherDetailChart = new Chart(ctx, { type:'bar', data:{ labels:['อ.1','อ.2','อ.3'], datasets:[{ label:'ตัวอย่าง', data:[1,2,0], backgroundColor: ['#7c3aed','#fb7185','#7BE495'] }] }, options:{ responsive:true } });
-}
-
-/* end of script */
 </script>
 </body>
 </html>
