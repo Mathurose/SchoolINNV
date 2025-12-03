@@ -14,8 +14,15 @@
   .app{max-width:1100px;margin:22px auto;padding:18px}
   header.app-header{display:flex;align-items:center;gap:12px;margin-bottom:18px}
   .logo{display:flex;align-items:center;gap:12px}
-  .mark{width:54px;height:54px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;box-shadow:0 12px 30px rgba(108,99,255,0.12)}
-  h1{font-size:20px;margin:0;color:var(--primary)}
+  /* mark now is a rounded heart-like red badge with a school icon inside */
+  .mark{
+    width:54px;height:54px;border-radius:12px;
+    background:linear-gradient(135deg,#ff4d4f,#c72b2b);
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    font-size:24px;box-shadow:0 12px 30px rgba(199,43,43,0.14);
+  }
+  h1{font-size:20px;margin:0;color:var(--primary);display:flex;align-items:center;gap:8px}
+  .title-heart{font-size:18px;color:#ef4444;margin-left:4px}
   .muted{color:var(--muted);font-size:13px}
   .card{background:var(--card);border-radius:12px;padding:14px;box-shadow:0 8px 26px rgba(13,20,39,0.04);margin-bottom:14px}
   .grid{display:grid;grid-template-columns:1fr 360px;gap:14px}
@@ -62,6 +69,7 @@
   .icon-btn.yellow{background:linear-gradient(135deg,#fff7e6,#fff1cc);border:1px solid rgba(245,158,11,0.08)}
   .icon-btn.pink{background:linear-gradient(135deg,#fff0f6,#ffedf7);border:1px solid rgba(255,122,152,0.08)}
   .icon-btn.blue{background:linear-gradient(135deg,#ecfeff,#e0f2fe);border:1px solid rgba(14,165,233,0.08)}
+  .icon-btn.selected{outline:3px solid rgba(108,99,255,0.12);transform:translateY(-4px)}
   /* small label under icon */
   .icon-label{font-size:11px;color:var(--muted);margin-top:4px}
   @media(max-width:980px){.grid{grid-template-columns:1fr} }
@@ -71,9 +79,11 @@
 <div class="app">
   <header class="app-header">
     <div class="logo">
-      <div class="mark">LV</div>
+      <!-- mark changed: red rounded badge with school emoji inside -->
+      <div class="mark">🏫</div>
       <div>
-        <h1>LiteVibe</h1>
+        <!-- Title with red heart after name -->
+        <h1>LiteVibe <span class="title-heart">❤️</span></h1>
         <div class="muted">ระบบติดตามอารมณ์และพฤติกรรม — Prototype</div>
       </div>
     </div>
@@ -229,25 +239,24 @@
                 <select id="teacherSelect"></select>
               </div>
 
-              <div style="min-width:140px">
-                <label>ช่วงเวลา</label>
-                <select id="teacherPeriod"><option value="week">สัปดาห์</option><option value="month">เดือน</option><option value="semester">ภาคการศึกษา</option></select>
-              </div>
-
-              <div style="display:flex;align-items:center;gap:8px">
-                <!-- colorful icon buttons for stats -->
-                <div class="icon-row">
-                  <button class="icon-btn yellow" id="statIcon1" title="แสดงสถิติ"><div class="ico">📊</div><div class="icon-label">สรุป</div></button>
-                  <button class="icon-btn pink" id="statIcon2" title="แสดงสถิติรายวัน"><div class="ico">📈</div><div class="icon-label">รายวัน</div></button>
-                  <button class="icon-btn blue" id="statIcon3" title="แสดงเทรนด์"><div class="ico">📅</div><div class="icon-label">เทรนด์</div></button>
+              <div style="min-width:240px">
+                <label>รูปแบบสถิติ (ปัจจุบัน: รายวัน)</label>
+                <div class="icon-row" style="margin-top:6px">
+                  <!-- Daily is the default, but icons let teacher switch to Week / Month / Semester.
+                       Cute colorful icons; selected icon highlighted -->
+                  <button class="icon-btn yellow selected" id="dailyIcon" title="สถิติรายวัน"><div class="ico">🌤️</div><div class="icon-label">รายวัน</div></button>
+                  <button class="icon-btn pink" id="weekIcon" title="สถิติรายสัปดาห์"><div class="ico">🗓️</div><div class="icon-label">สัปดาห์</div></button>
+                  <button class="icon-btn blue" id="monthIcon" title="สถิติรายเดือน"><div class="ico">📈</div><div class="icon-label">เดือน</div></button>
+                  <button class="icon-btn" id="semIcon" title="สถิติรายภาคการศึกษา" style="background:linear-gradient(135deg,#f0f7ff,#e6f0ff);border:1px solid rgba(108,99,255,0.08)"><div class="ico">🎒</div><div class="icon-label">ภาค</div></button>
                 </div>
               </div>
+
             </div>
 
             <div style="margin-top:12px" class="chart-wrap">
               <canvas id="teacherDetailChart" height="200"></canvas>
             </div>
-            <div class="muted small" style="margin-top:8px">กดไอคอนสีสันด้านบนเพื่อแสดงกราฟ (จะใช้โหมดและตัวเลือกปัจจุบัน)</div>
+            <div class="muted small" style="margin-top:8px">เริ่มต้นแสดงสถิติรายวัน จะเปลี่ยนเมื่อกดไอคอนรูปแบบสถิติ</div>
           </div>
 
           <div class="card" style="margin-top:12px">
@@ -347,10 +356,11 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-/* LiteVibe v4.2 (updated)
-   - student: appointment dropdown + colored status badges in appt history
-   - teacher: colorful icon buttons to show statistics (use current mode/selection)
-   - other functions preserved (redeem requests, approve/reject)
+/* LiteVibe update:
+   - Added heart emoji after title and changed application icon to show school inside a red badge
+   - Teacher panel: statistic format icons (daily default / week / month / semester).
+     Default view shows 'daily' (per-day) until teacher clicks another icon.
+   - Kept other functionality (appointments, redeem, diary, risk) unchanged.
 */
 
 const STORAGE_KEY = 'litevibe_data_v4';
@@ -369,7 +379,7 @@ let periodChart = null;
 let teacherDetailChart = null;
 let adminMoodChart = null;
 
-/* ---------- storage & seed (same as before) ---------- */
+/* ---------- storage & seed (kept) ---------- */
 function defaultState(){ return { users: {}, activity: [], redeemRequests: [] }; }
 function isoDaysAgo(days){ const d = new Date(); d.setDate(d.getDate()-days); return d.toISOString(); }
 function formatDate(iso){ const d = new Date(iso); return d.toLocaleString(); }
@@ -462,6 +472,7 @@ function loginAs(name){
   document.getElementById('mainArea').style.display='block';
   document.getElementById('logoutBtn').style.display='inline-block';
   document.getElementById('currentUserBox').innerText = `${u.display || u.name} (${u.role})`;
+  // when teacher logs in, ensure teacher detail shows daily by default
   renderAll();
 }
 document.getElementById('logoutBtn').addEventListener('click', ()=> {
@@ -561,7 +572,7 @@ document.getElementById('saveTeacherMoodBtn')?.addEventListener('click', ()=>{
   saveState(); logActivity(`${currentUser} (ครู) บันทึกอารมณ์: ${meta.emoji} ${meta.label}`); if(document.getElementById('teacherDiaryText')) document.getElementById('teacherDiaryText').value=''; Array.from(document.querySelectorAll('#teacherMoodButtons .emoji-btn')).forEach(b=>b.classList.remove('selected')); renderAll();
 });
 
-/* ---------- Redeem: student requests ---------- */
+/* ---------- Redeem & Teacher approve (kept) ---------- */
 document.addEventListener('click', (e)=>{
   if(e.target && e.target.matches('.requestRedeemBtn')){
     if(!currentUser) return alert('กรุณาเข้าสู่ระบบ');
@@ -576,7 +587,6 @@ document.addEventListener('click', (e)=>{
   }
 });
 
-/* render student's redeem history & pending requests */
 function renderStudentRedeems(){
   if(!currentUser) return;
   const u = state.users[currentUser];
@@ -593,7 +603,7 @@ function renderStudentRedeems(){
   }
 }
 
-/* ---------- Appointment: populate teacher list + send request + history ---------- */
+/* ---------- Appointment: dropdown teachers + send + colored status display ---------- */
 function populateTeachersForAppt(){
   const sel = document.getElementById('apptTeacherSelect');
   if(!sel) return;
@@ -628,7 +638,7 @@ function renderApptHistoryForStudent(){
   }).join('');
 }
 
-/* ---------- Teacher: view and approve/reject redeem requests ---------- */
+/* ---------- Teacher: redeem approve/reject (kept) ---------- */
 function renderTeacherRedeemRequests(){
   const el = document.getElementById('teacherRedeemRequests');
   if(!el) return;
@@ -676,38 +686,58 @@ function handleRejectRedeem(id){
   saveState(); logActivity(`${currentUser} ปฏิเสธการแลกของ ${req.student}: ${req.item}`); alert('ปฏิเสธคำขอเรียบร้อยแล้ว'); renderAll();
 }
 
-/* ---------- Teacher controls & icon buttons ---------- */
+/* ---------- Teacher controls & statistic-format icons ---------- */
 function renderTeacherControls(){
   const modeBtns = document.querySelectorAll('.teacherModeBtn');
   modeBtns.forEach(b=>b.addEventListener('click', ()=>{
     modeBtns.forEach(x=>x.classList.remove('active')); b.classList.add('active'); updateTeacherSelectLabel();
   }));
   updateTeacherSelectLabel();
-  // icon buttons: use current mode and selection
-  document.getElementById('statIcon1').addEventListener('click', ()=> {
+
+  // statistic format icons: daily (default), week, month, semester
+  const dailyIcon = document.getElementById('dailyIcon');
+  const weekIcon = document.getElementById('weekIcon');
+  const monthIcon = document.getElementById('monthIcon');
+  const semIcon = document.getElementById('semIcon');
+  const icons = [dailyIcon, weekIcon, monthIcon, semIcon];
+
+  function selectIcon(selectedEl){
+    icons.forEach(ic => ic.classList.remove('selected'));
+    selectedEl.classList.add('selected');
+  }
+
+  // default show daily (per-day) until changed
+  selectIcon(dailyIcon);
+
+  dailyIcon.addEventListener('click', ()=>{
+    selectIcon(dailyIcon);
     const mode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student';
     const id = document.getElementById('teacherSelect')?.value;
-    const period = document.getElementById('teacherPeriod')?.value || 'week';
-    renderTeacherDetail(mode, id, period);
+    renderTeacherDetail(mode, id, 'day'); // 'day' = per-day view (7 days)
   });
-  document.getElementById('statIcon2').addEventListener('click', ()=> {
+  weekIcon.addEventListener('click', ()=>{
+    selectIcon(weekIcon);
     const mode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student';
     const id = document.getElementById('teacherSelect')?.value;
-    // force 'month' view for this icon
+    renderTeacherDetail(mode, id, 'week');
+  });
+  monthIcon.addEventListener('click', ()=>{
+    selectIcon(monthIcon);
+    const mode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student';
+    const id = document.getElementById('teacherSelect')?.value;
     renderTeacherDetail(mode, id, 'month');
   });
-  document.getElementById('statIcon3').addEventListener('click', ()=> {
+  semIcon.addEventListener('click', ()=>{
+    selectIcon(semIcon);
     const mode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student';
     const id = document.getElementById('teacherSelect')?.value;
-    // force 'semester' view for this icon
     renderTeacherDetail(mode, id, 'semester');
   });
-  document.getElementById('teacherViewBtn')?.addEventListener('click', ()=> { // for backward compatibility if present
-    const mode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student';
-    const id = document.getElementById('teacherSelect')?.value;
-    const period = document.getElementById('teacherPeriod')?.value || 'week';
-    renderTeacherDetail(mode, id, period);
-  });
+
+  // If teacher has selection already, render daily by default
+  const initialMode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student';
+  const initialId = document.getElementById('teacherSelect')?.value;
+  renderTeacherDetail(initialMode, initialId, 'day');
 }
 
 function updateTeacherSelectLabel(){
@@ -732,10 +762,11 @@ function updateTeacherSelectLabel(){
   }
 }
 
+/* render teacher detail chart (period can be 'day','week','month','semester') */
 function renderTeacherDetail(mode, id, period){
   let students = [];
   if(mode === 'student'){
-    if(!id) { alert('กรุณาเลือกนักเรียน'); return; }
+    if(!id) { /* if nothing selected, try to pick first student */ const first = Object.values(state.users).find(u=>u.role==='student'); if(first) id = first.name; else return; }
     const s = state.users[id]; if(!s) return alert('ไม่พบข้อมูลนักเรียน');
     students = [s];
   } else if(mode === 'class'){
@@ -751,7 +782,31 @@ function renderTeacherDetail(mode, id, period){
   teacherDetailChart = new Chart(ctx, { type:'bar', data:{ labels: agg.labels, datasets }, options:{ responsive:true, plugins:{legend:{position:'bottom'}}, scales:{ x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}} } } });
 }
 
-/* ---------- Risk detection & lists (unchanged) ---------- */
+/* ---------- aggregate helper extended for 'day' ---------- */
+function aggregateByPeriod(moods, period){
+  const now = new Date();
+  if(period === 'day' || period === 'week'){
+    // daily buckets for last 7 days
+    const days = []; for(let i=6;i>=0;i--){ const d = new Date(); d.setDate(now.getDate()-i); days.push(dateKey(d)); }
+    const data = days.map(_=> ({}));
+    moods.forEach(entry=>{ if(!entry.iso) return; const d = new Date(entry.iso); const key = dateKey(d); const idx = days.indexOf(key); if(idx>=0) data[idx][entry.label] = (data[idx][entry.label]||0)+1; });
+    return { labels: days.map(d=>formatDayLabel(d)), data };
+  } else if(period === 'month'){
+    const weeks = []; const weekRanges = [];
+    for(let w=0; w<4; w++){ const start = new Date(); start.setDate(now.getDate() - 30 + w*7); const end = new Date(); end.setDate(start.getDate() + 6); weekRanges.push({start, end}); weeks.push(`สัปดาห์ ${w+1}`); }
+    const data = weeks.map(_=> ({}));
+    moods.forEach(entry=>{ if(!entry.iso) return; const d = new Date(entry.iso); for(let i=0;i<weekRanges.length;i++){ if(d >= stripTime(weekRanges[i].start) && d <= endOfDay(weekRanges[i].end)){ data[i][entry.label] = (data[i][entry.label]||0)+1; break; } } });
+    return { labels: weeks, data };
+  } else {
+    // semester
+    const sem = getCurrentSemester(now); const months = []; const data=[]; let m = new Date(sem.start);
+    while(m <= now){ months.push(formatMonthLabel(m)); data.push({}); m.setMonth(m.getMonth()+1); }
+    moods.forEach(entry=>{ if(!entry.iso) return; const d = new Date(entry.iso); if(d >= sem.start && d <= now){ const idx = (d.getFullYear()*12 + d.getMonth()) - (sem.start.getFullYear()*12 + sem.start.getMonth()); if(idx>=0 && idx<data.length) data[idx][entry.label] = (data[idx][entry.label]||0)+1; } });
+    return { labels: months, data };
+  }
+}
+
+/* ---------- Risk detection & lists (kept) ---------- */
 function studentRiskInfo(student){
   const reasons = [];
   const now = new Date();
@@ -792,7 +847,7 @@ function renderAdminRiskList(){
   el.innerHTML = risks.map(r=>{ const s = r.student; const levelClass = r.info.level === 'high' ? 'risk-high' : 'risk-medium'; const reasons = r.info.reasons.join(' • '); return `<div class="risk-item"><div style="flex:1"><strong>${s.display || s.name}</strong> <div class="meta">${s.classId || '-'} • ${s.grade || '-'}</div><div class="meta" style="margin-top:6px">${reasons}</div></div><div><div class="risk-badge ${levelClass}">${r.info.level === 'high' ? 'เสี่ยงสูง' : 'เสี่ยงปานกลาง'}</div></div></div>`; }).join('');
 }
 
-/* ---------- Admin dashboard ---------- */
+/* ---------- Admin dashboard (kept) ---------- */
 function renderAdminDashboard(){
   if(!currentUser) return;
   const u = state.users[currentUser];
@@ -833,28 +888,6 @@ function renderPeriodChart(period){
   periodChart = new Chart(ctxPeriod, { type:'bar', data:{ labels: agg.labels, datasets }, options:{ responsive:true, plugins:{legend:{position:'bottom'}}, scales:{ x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}} } } });
 }
 
-/* ---------- aggregation helper ---------- */
-function aggregateByPeriod(moods, period){
-  const now = new Date();
-  if(period === 'week'){
-    const days = []; for(let i=6;i>=0;i--){ const d = new Date(); d.setDate(now.getDate()-i); days.push(dateKey(d)); }
-    const data = days.map(_=> ({}));
-    moods.forEach(entry=>{ if(!entry.iso) return; const d = new Date(entry.iso); const key = dateKey(d); const idx = days.indexOf(key); if(idx>=0) data[idx][entry.label] = (data[idx][entry.label]||0)+1; });
-    return { labels: days.map(d=>formatDayLabel(d)), data };
-  } else if(period === 'month'){
-    const weeks = []; const weekRanges = [];
-    for(let w=0; w<4; w++){ const start = new Date(); start.setDate(now.getDate() - 30 + w*7); const end = new Date(); end.setDate(start.getDate() + 6); weekRanges.push({start, end}); weeks.push(`สัปดาห์ ${w+1}`); }
-    const data = weeks.map(_=> ({}));
-    moods.forEach(entry=>{ if(!entry.iso) return; const d = new Date(entry.iso); for(let i=0;i<weekRanges.length;i++){ if(d >= stripTime(weekRanges[i].start) && d <= endOfDay(weekRanges[i].end)){ data[i][entry.label] = (data[i][entry.label]||0)+1; break; } } });
-    return { labels: weeks, data };
-  } else {
-    const sem = getCurrentSemester(now); const months = []; const data=[]; let m = new Date(sem.start);
-    while(m <= now){ months.push(formatMonthLabel(m)); data.push({}); m.setMonth(m.getMonth()+1); }
-    moods.forEach(entry=>{ if(!entry.iso) return; const d = new Date(entry.iso); if(d >= sem.start && d <= now){ const idx = (d.getFullYear()*12 + d.getMonth()) - (sem.start.getFullYear()*12 + sem.start.getMonth()); if(idx>=0 && idx<data.length) data[idx][entry.label] = (data[idx][entry.label]||0)+1; } });
-    return { labels: months, data };
-  }
-}
-
 /* ---------- Students list & misc ---------- */
 function renderStudentsList(){ const q = document.getElementById('searchStudent')?.value.trim().toLowerCase(); const container = document.getElementById('studentsList'); if(!container) return; const students = Object.values(state.users).filter(u=>u.role==='student' && (!q || (u.display||u.name).toLowerCase().includes(q))); if(!students.length){ container.innerHTML = '<div class="meta">ไม่มีนักเรียน</div>'; return; } container.innerHTML = students.map(s=>{ const avatarHtml = s.avatar ? `<div class="student-avatar"><img src="${s.avatar}" alt=""></div>` : `<div class="student-avatar">${(s.display||s.name).slice(0,2).toUpperCase()}</div>`; return `<div style="padding:8px;border-bottom:1px solid #f3f6fb;display:flex;align-items:center;gap:10px">${avatarHtml}<div><strong>${s.display||s.name}</strong><div class="meta">${s.classId || '-'} • ${s.grade || '-'}</div></div></div>`; }).join(''); }
 document.getElementById('searchStudent')?.addEventListener('input', renderStudentsList);
@@ -864,68 +897,28 @@ function renderApptRequests(){ const el = document.getElementById('apptRequests'
 function handleApptAction(id,status){ const t = state.users[currentUser]; const item = (t.inbox||[]).find(x=>x.id===id); if(!item) return; item.status = status; const stu = state.users[item.student]; if(stu){ const ap = stu.appts.find(x=>x.id===id); if(ap) ap.status = status; } saveState(); logActivity(`${currentUser} ${status==='approved'?'อนุมัติ':'ปฏิเสธ'} นัดจาก ${item.student}`); renderAll(); }
 function handleApptNote(id,note){ const t = state.users[currentUser]; const item = (t.inbox||[]).find(x=>x.id===id); if(!item) return; item.teacherNote = note; const stu = state.users[item.student]; if(stu){ const ap = stu.appts.find(x=>x.id===id); if(ap) ap.teacherNote = note; } saveState(); logActivity(`${currentUser} บันทึกหมายเหตุนัด ${item.student}`); renderAll(); }
 
-/* reports (kept) */
+/* reports & diary rendering (kept) */
 function renderReportsList(){ const all = []; Object.values(state.users).forEach(u=>{ if(u.reports) u.reports.forEach(r=>{ if(r.teacher === currentUser) all.push(r); })}); const el = document.getElementById('reportsList'); if(!el) return; if(!all.length){ el.innerHTML = '<div class="meta">ยังไม่มีรายงาน</div>'; return; } el.innerHTML = all.map(r=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${r.time} → ${r.student}</div><div>${r.text}</div></div>`).join(''); }
 function buildReportStudentSelect(){ const sel = document.getElementById('reportStudent'); if(!sel) return; sel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>'; Object.values(state.users).filter(u=>u.role==='student').forEach(s=>{ const opt = document.createElement('option'); opt.value = s.name; opt.innerText = s.display || s.name; sel.appendChild(opt); }); }
+function renderDiaryHistoryForUser(user, containerId){ const el = document.getElementById(containerId); if(!el) return; if(!user.diaries || !user.diaries.length){ el.innerHTML = '<div class="meta">ยังไม่มีบันทึก My diary</div>'; return; } el.innerHTML = user.diaries.slice().reverse().map(d=>`<div class="diary-item"><div class="meta">${d.time}</div><div style="margin-top:6px">${escapeHtml(d.text)}</div></div>`).join(''); }
 
-/* quick panel & activity */
-function renderQuickPanel(){ const el = document.getElementById('quickPanel'); if(!currentUser){ el.innerHTML=''; return; } const u = state.users[currentUser]; let html = `<div class="meta">บทบาท: ${u.role}</div>`; if(u.role==='student'){ html += `<div style="margin-top:6px"><strong>ดาว: ${u.stars || 0}</strong></div>`; html += `<div class="meta" style="margin-top:6px">บันทึก: ${(u.diaries||[]).length} ครั้ง</div>`; } else if(u.role === 'teacher'){ const pending = (u.inbox||[]).filter(i=>i.status==='pending').length; html += `<div style="margin-top:6px"><strong>คำขอนัดรออนุมัติ: ${pending}</strong></div>`; } else if(u.role === 'admin'){ const students = Object.values(state.users).filter(x=>x.role==='student').length; html += `<div style="margin-top:6px"><strong>นักเรียนทั้งหมด: ${students}</strong></div>`; } el.innerHTML = html; }
-function renderActivity(){ const el = document.getElementById('activityLog'); el.innerHTML = state.activity.map(a=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${a.time}</div><div>${a.txt}</div></div>`).join(''); }
-
-/* ---------- utilities ---------- */
+/* helpers */
+function hexToRgba(hex, a){ if(hex.startsWith('#')) hex = hex.slice(1); const bigint = parseInt(hex,16); const r = (bigint >> 16) & 255; const g = (bigint >> 8) & 255; const b = bigint & 255; return `rgba(${r},${g},${b},${a})`; }
 function dateKey(d){ const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return `${dt.getDate().toString().padStart(2,'0')} ${dt.toLocaleString('th-TH',{month:'short'})}`; }
 function formatDayLabel(label){ return label; }
 function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
 function endOfDay(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate(),23,59,59,999); }
 function formatMonthLabel(d){ return d.toLocaleString('th-TH',{month:'short', year:'numeric'}); }
 function getCurrentSemester(now){ const y = now.getFullYear(); if(now.getMonth() <= 5) return { start: new Date(y,0,1), end: new Date(y,5,30) }; else return { start: new Date(y,6,1), end: new Date(y,11,31) }; }
-function hexToRgba(hex, a){ if(hex.startsWith('#')) hex = hex.slice(1); const bigint = parseInt(hex,16); const r = (bigint >> 16) & 255; const g = (bigint >> 8) & 255; const b = bigint & 255; return `rgba(${r},${g},${b},${a})`; }
 function escapeHtml(unsafe){ return unsafe ? unsafe.replace(/[&<"'>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m])) : ''; }
 
-/* ---------- view student profile helper ---------- */
-function viewStudentProfile(name){
-  const s = state.users[name]; if(!s) return alert('ไม่พบข้อมูลนักเรียน');
-  let txt = `โปรไฟล์: ${s.display||s.name}\nชั้นเรียน: ${s.classId||'-'} ${s.grade||''}\nดาว: ${s.stars||0}\n\nบันทึกล่าสุด:\n`;
-  if(s.moods && s.moods.length) txt += `${s.moods[s.moods.length-1].time} ${s.moods[s.moods.length-1].emoji} ${s.moods[s.moods.length-1].label}\n\n`;
-  txt += 'ประวัติ My diary:\n'; (s.diaries||[]).forEach(d=> txt += `${d.time} — ${d.text}\n`);
-  txt += '\nประวัติการแลก:\n'; (s.redeemHistory||[]).forEach(r=> txt += `${r.time} — ${r.item} (-${r.cost}) by ${r.approvedBy||'-'}\n`);
-  txt += '\nรายงาน:\n'; (s.reports||[]).forEach(r=> txt += `${r.time} — ${r.text}\n`);
-  alert(txt);
-}
+/* view profile helper */
+function viewStudentProfile(name){ const s = state.users[name]; if(!s) return alert('ไม่พบข้อมูลนักเรียน'); let txt = `โปรไฟล์: ${s.display||s.name}\nชั้นเรียน: ${s.classId||'-'} ${s.grade||''}\nดาว: ${s.stars||0}\n\nบันทึกล่าสุด:\n`; if(s.moods && s.moods.length) txt += `${s.moods[s.moods.length-1].time} ${s.moods[s.moods.length-1].emoji} ${s.moods[s.moods.length-1].label}\n\n`; txt += 'ประวัติ My diary:\n'; (s.diaries||[]).forEach(d=> txt += `${d.time} — ${d.text}\n`); txt += '\nประวัติการแลก:\n'; (s.redeemHistory||[]).forEach(r=> txt += `${r.time} — ${r.item} (-${r.cost}) by ${r.approvedBy||'-'}\n`); txt += '\nรายงาน:\n'; (s.reports||[]).forEach(r=> txt += `${r.time} — ${r.text}\n`); alert(txt); }
 
-/* ---------- initial render and periodic updates ---------- */
+/* initial render and periodic updates */
 renderActivity();
 renderAll();
 setInterval(()=>{ renderAdminDashboard(); renderTeacherRiskList(); renderTeacherRedeemRequests(); },5000);
-
-/* ---------- renderPanels keeps student appointment history up-to-date ---------- */
-function renderPanels(){
-  if(!currentUser) return;
-  const u = state.users[currentUser];
-  document.getElementById('studentPanel').style.display = u.role === 'student' ? 'block' : 'none';
-  document.getElementById('teacherPanel').style.display = u.role === 'teacher' ? 'block' : 'none';
-  document.getElementById('adminPanel').style.display = u.role === 'admin' ? 'block' : 'none';
-
-  if(u.role === 'student'){
-    document.getElementById('lastStudentMoodText').innerText = u.moods && u.moods.length ? `${u.moods[u.moods.length-1].emoji} ${u.moods[u.moods.length-1].label} — ${u.moods[u.moods.length-1].time}` : '-';
-    renderDiaryHistoryForUser(u, 'studentDiaryHistory');
-    renderApptHistoryForStudent();
-    renderStudentRedeems();
-  }
-  if(u.role === 'teacher'){
-    renderApptRequests(); renderReportsList(); buildReportStudentSelect(); renderStudentsList();
-  }
-  renderQuickPanel();
-  populateTeachersForAppt();
-  renderTeacherRiskList();
-}
-
-/* utility: render diary for user */
-function renderDiaryHistoryForUser(user, containerId){
-  const el = document.getElementById(containerId); if(!el) return;
-  if(!user.diaries || !user.diaries.length){ el.innerHTML = '<div class="meta">ยังไม่มีบันทึก My diary</div>'; return; }
-  el.innerHTML = user.diaries.slice().reverse().map(d=>`<div class="diary-item"><div class="meta">${d.time}</div><div style="margin-top:6px">${escapeHtml(d.text)}</div></div>`).join('');
-}
 
 </script>
 </body>
