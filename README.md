@@ -5,14 +5,8 @@
 <title>LiteVibe — ระบบติดตามอารมณ์และพฤติกรรม</title>
 <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Pastel theme: ฟ้า-ชมพูพาสเทล, บริเวณข้อความสำคัญใช้พื้นหลังขาว */
   :root{
-    --bg-a: #f7fbff;           /* very light blue */
-    --bg-b: #fff5fb;           /* very light pink */
-    --card:#ffffff;            /* white for important blocks */
-    --primary:#7cc8ff;         /* pastel blue */
-    --accent:#ffb8d9;          /* pastel pink */
-    --muted:#6b7280;
+    --bg:#f6f9ff; --card:#ffffff; --primary:#6c63ff; --accent:#ff6fab; --muted:#6b7280;
     --danger:#ef4444; --warning:#f59e0b; --success:#16a34a; --info:#0ea5e9;
   }
   *{box-sizing:border-box}
