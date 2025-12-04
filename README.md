@@ -199,6 +199,22 @@
               <div class="muted">ดูสถิติ อนุมัติคำขอแลกดาว และจัดการดาวเด็กดี / ส่งรายงานให้ครูที่ปรึกษา</div>
             </div>
           </div>
+           <div class="card">
+            <div style="display:flex;align-items:center;gap:12px">
+              <div><strong>บันทึกอารมณ์ประจำวัน</strong></div>
+              <div class="muted">เลือกอิโมจิน่ารักแล้วเขียนบันทึกสั้น ๆ</div>
+              <div class="right"><span class="badge">LiteVibe</span></div>
+            </div>
+
+            <div style="margin-top:12px">
+              <label>อารมณ์วันนี้</label>
+              <div id="studentMoodButtons" class="emoji-row"></div>
+            </div>
+
+            <div style="margin-top:12px">
+              <label>ข้อความสั้น ๆ / My diary</label>
+              <textarea id="studentDiaryText" rows="3" placeholder="เล่าเรื่องสั้น ๆ วันนี้เป็นอย่างไร..."></textarea>
+            </div>
 
           <div class="card" style="margin-top:12px">
             <div style="display:flex;gap:12px;align-items:center">
