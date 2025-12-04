@@ -71,11 +71,11 @@
   .icon-row{display:flex;gap:10px;align-items:center}
   .icon-btn{width:56px;height:56px;border-radius:12px;border:0;background:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 8px 20px rgba(16,24,45,0.05);transition:transform .12s}
   .icon-btn:hover{transform:translateY(-6px)}
-  .icon-btn .ico{font-size:22px}
   .icon-btn.purple{background:linear-gradient(135deg,#f3e8ff,#fff0f6);border:1px solid rgba(124,58,237,0.08)}
   .icon-btn.pink{background:linear-gradient(135deg,#fff0f6,#fff7fb);border:1px solid rgba(219,39,119,0.08)}
   .icon-btn.selected{outline:3px solid rgba(124,58,237,0.12);transform:translateY(-4px)}
   .icon-label{font-size:11px;color:var(--muted);margin-top:4px}
+  .flagged { color: var(--danger); font-weight:700; padding:4px 8px; border-radius:8px; background:#fff0f2; display:inline-block; }
   .card strong, .card h4, .badge { background: var(--card); padding: 6px 8px; border-radius: 8px; display: inline-block; }
   @media(max-width:980px){.grid{grid-template-columns:1fr} }
 </style>
@@ -293,6 +293,13 @@
             <div id="advisorInbox" class="list"></div>
           </div>
 
+          <!-- Behavior risk chart for teacher (class-level or overall) -->
+          <div class="card" style="margin-top:12px">
+            <h4>สถิติเสี่ยงพฤติกรรม (Teacher view)</h4>
+            <div class="chart-wrap"><canvas id="teacherBehaviorRiskChart" height="140"></canvas></div>
+            <div class="muted small" style="margin-top:8px">แสดงภาพรวมความเสี่ยงจากรายงานพฤติกรรม และสัดส่วนอารมณ์</div>
+          </div>
+
           <div class="card" style="margin-top:12px">
             <h4>คำขอแลกดาวจากนักเรียน</h4>
             <div id="teacherRedeemRequests" class="list"></div>
@@ -322,6 +329,11 @@
           <div class="card" style="margin-top:12px">
             <h4>สรุปอารมณ์นักเรียน (ภาพรวม)</h4>
             <div class="chart-wrap"><canvas id="adminMoodChart" height="140"></canvas></div>
+          </div>
+
+          <div class="card" style="margin-top:12px">
+            <h4>สถิติเสี่ยงพฤติกรรม (ภาพรวม)</h4>
+            <div class="chart-wrap"><canvas id="adminBehaviorRiskChart" height="140"></canvas></div>
           </div>
 
           <div class="card" style="margin-top:12px">
@@ -385,20 +397,20 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-/* Updated: teachers can send behavioral reports directly to advisor (ครูที่ปรึกษา)
-   and the app color theme was changed to purple-pink modern.
-   Implementation:
-    - Added UI selects: reportStudentSelect, reportAdvisorSelect and sendReportToAdvisor()
-    - Advisor receives reports in advisorInbox (state.users[advisor].inboxReports)
-    - Reports also saved into student.reports for record
+/* Updated features:
+ 1) Teachers can send behavioral reports to advisors. An "AI" (local heuristic + keyword detector)
+    analyzes the report text to detect negative-behavior signals and sets a risk flag/score.
+ 2) Admin and Teacher dashboards include behavior-risk charts alongside emotion charts.
+ Data stored in localStorage under STORAGE_KEY.
 */
 
-const STORAGE_KEY = 'litevibe_data_v4';
+/* ---------- Config & emoji choices ---------- */
+const STORAGE_KEY = 'litevibe_data_v5';
 const emojiChoices = [
   {key:'very_happy', emoji:'😄', label:'มีความสุขมาก', color:'#FFD166'},
   {key:'happy', emoji:'🙂', label:'มีความสุข', color:'#7BE495'},
   {key:'neutral', emoji:'😐', label:'เฉย ๆ', color:'#A3A3FF'},
-  {key:'sad', emoji:'😢', label:'เศร้า', color:'#90A7FF'},
+  {key:'sad', emoji:'😢', label:'เศร้า', color:'#90A3FF'},
   {key:'angry', emoji:'😠', label:'โกรธ', color:'#FF9AA2'},
   {key:'tired', emoji:'😴', label:'เหนื่อย', color:'#C6C6C6'}
 ];
@@ -408,14 +420,16 @@ let currentUser = null;
 let periodChart = null;
 let teacherDetailChart = null;
 let adminMoodChart = null;
+let adminBehaviorChart = null;
+let teacherBehaviorChart = null;
 
-/* ---------- storage & seed (modified to include inboxReports) ---------- */
+/* ---------- Storage & seed ---------- */
 function defaultState(){ return { users: {}, activity: [], redeemRequests: [] }; }
 
 function seedSampleData(s){
-  s.users['khonmek'] = { name:'khonmek', display:'นักเรียนก้อนเมฆ', role:'student', classId:'M1A', grade:'ม.1', stars:5, avatar:'', moods:[], diaries:[], appts:[], redeemHistory:[], quiz:[], reports:[] };
-  s.users['thongfa'] = { name:'thongfa', display:'นักเรียนท้องฟ้า', role:'student', classId:'M1A', grade:'ม.1', stars:8, avatar:'', moods:[], diaries:[], appts:[], redeemHistory:[], quiz:[], reports:[] };
-  s.users['medfon'] = { name:'medfon', display:'นักเรียนเม็ดฝน', role:'student', classId:'M2B', grade:'ม.2', stars:2, avatar:'', moods:[], diaries:[], appts:[], redeemHistory:[], quiz:[], reports:[] };
+  s.users['khonmek'] = { name:'khonmek', display:'ก้อนเมฆ', role:'student', classId:'M1A', grade:'ม.1', stars:5, avatar:'', moods:[], diaries:[], appts:[], redeemHistory:[], quiz:[], reports:[] };
+  s.users['thongfa'] = { name:'thongfa', display:'ท้องฟ้า', role:'student', classId:'M1A', grade:'ม.1', stars:8, avatar:'', moods:[], diaries:[], appts:[], redeemHistory:[], quiz:[], reports:[] };
+  s.users['medfon'] = { name:'medfon', display:'เม็ดฝน', role:'student', classId:'M2B', grade:'ม.2', stars:2, avatar:'', moods:[], diaries:[], appts:[], redeemHistory:[], quiz:[], reports:[] };
 
   s.users['ajarn_somchai'] = { name:'ajarn_somchai', display:'ครูสมชาย', role:'teacher', avatar:'', moods:[], diaries:[], inbox:[], inboxReports:[], reports:[] };
   s.users['ajarn_somsri'] = { name:'ajarn_somsri', display:'ครูสมศรี', role:'teacher', avatar:'', moods:[], diaries:[], inbox:[], inboxReports:[], reports:[] };
@@ -431,16 +445,52 @@ function loadState(){
     const raw = localStorage.getItem(STORAGE_KEY);
     if(!raw){ const s = defaultState(); seedSampleData(s); localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); return s; }
     const parsed = JSON.parse(raw);
+    // ensure structures
     if(!parsed.users || Object.keys(parsed.users).length===0){ seedSampleData(parsed); localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed)); }
+    Object.values(parsed.users||{}).forEach(u=>{
+      if(!u.reports) u.reports = [];
+      if(u.role === 'teacher' && !u.inboxReports) u.inboxReports = [];
+      if(!u.redeemHistory) u.redeemHistory = [];
+    });
     if(!parsed.redeemRequests) parsed.redeemRequests = [];
-    // ensure teachers have inboxReports array
-    Object.values(parsed.users||{}).forEach(u=>{ if(u.role==='teacher' && !u.inboxReports) u.inboxReports = []; if(!u.reports) u.reports = []; if(!u.redeemHistory) u.redeemHistory = []; });
     return parsed;
-  }catch(e){ const s = defaultState(); seedSampleData(s); return s; }
+  }catch(e){
+    const s = defaultState(); seedSampleData(s); return s;
+  }
 }
 function saveState(){ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
-/* ---------- utilities ---------- */
+/* ---------- Simple "AI" analyzer (keyword + heuristic) ----------
+   This runs locally and flags text containing negative-behavior keywords.
+   It returns an object: { flagged: boolean, score: 0-5, matches: [] }
+   This is intentionally local/heuristic (no external AI calls).
+*/
+const NEGATIVE_KEYWORDS = [
+  'ตี', 'ทำร้าย', 'ทะเลาะ', 'โดนรังแก', 'กลั่นแกล้ง', 'ขโมย',
+  'หนีเรียน', 'ขาดเรียน', 'โดดเรียน', 'ซึมเศร้า', 'เครียด',
+  'คิดสั้น', 'ทำร้ายตัวเอง', 'ติดยา', 'เสพยา', 'เมา', 'รังแก', 'เกเร', 'พกของมีคม'
+];
+
+function analyzeReportText(text){
+  if(!text || !text.trim()) return { flagged:false, score:0, matches:[] };
+  const lower = text.toLowerCase();
+  const matches = [];
+  NEGATIVE_KEYWORDS.forEach(k=>{
+    if(lower.includes(k)) matches.push(k);
+  });
+  // simple scoring: more matches -> higher score
+  const score = Math.min(5, matches.length);
+  const flagged = score > 0;
+  // additional heuristic: negative sentiment words (Thai) as boost
+  // (we keep small list)
+  const NEG_SENTIMENT = ['ไม่ดี','แย่','รุนแรง','รังแก','กลัว','กังวล','โดด'];
+  NEG_SENTIMENT.forEach(k=>{ if(lower.includes(k) && !matches.includes(k)) matches.push(k); });
+  // final score adjust:
+  const finalScore = Math.min(5, Math.max(score, Math.ceil(matches.length/1)));
+  return { flagged: flagged || matches.length>0, score: finalScore, matches };
+}
+
+/* ---------- helpers ---------- */
 function isoDaysAgo(days){ const d = new Date(); d.setDate(d.getDate()-days); return d.toISOString(); }
 function formatDate(iso){ const d = new Date(iso); return d.toLocaleString(); }
 function generateId(){ return 'id_' + Math.random().toString(36).slice(2,9); }
@@ -505,7 +555,7 @@ document.getElementById('logoutBtn').addEventListener('click', ()=> {
 /* initial populate */
 populateUserSelect();
 
-/* ---------- Profile & Avatar (kept) ---------- */
+/* ---------- Profile & Avatar ---------- */
 const avatarInput = document.getElementById('avatarInput');
 const removeAvatarBtn = document.getElementById('removeAvatar');
 avatarInput.addEventListener('change', (e)=>{
@@ -533,6 +583,9 @@ function renderAll(){
   renderTeacherRedeemRequests();
   populateTeachersForAppt();
   populateReportSelectors();
+  renderStudentsList();
+  renderAdvisorInbox();
+  renderBehaviorCharts();
 }
 function renderProfile(){
   const avatarBox = document.getElementById('profileAvatar');
@@ -555,7 +608,7 @@ function renderProfile(){
   box.innerHTML = html;
 }
 
-/* ---------- Mood UI & Save (kept) ---------- */
+/* ---------- Mood UI & Save ---------- */
 function renderMoodButtons(containerId){
   const container = document.getElementById(containerId);
   if(!container) return;
@@ -581,7 +634,7 @@ document.getElementById('saveStudentMoodBtn').addEventListener('click', ()=>{
   saveState(); logActivity(`${currentUser} (นักเรียน) บันทึกอารมณ์: ${meta.emoji} ${meta.label}`); document.getElementById('studentDiaryText').value=''; Array.from(document.querySelectorAll('#studentMoodButtons .emoji-btn')).forEach(b=>b.classList.remove('selected')); renderAll();
 });
 
-/* ---------- Redeem & teacher approve/reject (kept) ---------- */
+/* ---------- Redeem & Requests (kept) ---------- */
 document.addEventListener('click', (e)=>{
   if(e.target && e.target.matches('.requestRedeemBtn')){
     if(!currentUser) return alert('กรุณาเข้าสู่ระบบ');
@@ -623,7 +676,7 @@ function populateTeachersForAppt(){
   });
 }
 
-/* send appointment */
+/* send appt */
 document.getElementById('requestAppt')?.addEventListener('click', ()=>{
   if(!currentUser) return alert('กรุณาเข้าสู่ระบบ');
   const teacher = document.getElementById('apptTeacherSelect').value;
@@ -691,7 +744,7 @@ function handleRejectRedeem(id){
   saveState(); logActivity(`${currentUser} ปฏิเสธการแลกของ ${req.student}: ${req.item}`); alert('ปฏิเสธคำขอเรียบร้อยแล้ว'); renderAll();
 }
 
-/* ---------- Teacher controls & charting (kept) ---------- */
+/* ---------- Teacher controls & charting ---------- */
 function renderTeacherControls(){
   const modeBtns = document.querySelectorAll('.teacherModeBtn');
   modeBtns.forEach(b=>b.addEventListener('click', ()=>{
@@ -746,7 +799,7 @@ function renderTeacherDetail(mode, id, period){
   teacherDetailChart = new Chart(ctx, { type:'bar', data:{ labels: agg.labels, datasets }, options:{ responsive:true, plugins:{legend:{position:'bottom'}}, scales:{ x:{stacked:true}, y:{stacked:true, beginAtZero:true, ticks:{precision:0}} } } });
 }
 
-/* ---------- Risk detection & lists (kept) ---------- */
+/* ---------- Risk detection uses both moods and flagged reports ---------- */
 function studentRiskInfo(student){
   const reasons = [];
   const now = new Date();
@@ -756,8 +809,17 @@ function studentRiskInfo(student){
   const recent = moods.filter(m => m.iso && new Date(m.iso) >= sevenDaysAgo);
   const negCount = recent.reduce((acc,m)=> acc + (negativeLabels.includes(m.label) ? 1 : 0), 0);
   if(negCount >= 2) reasons.push(`มี ${negCount} ครั้งของอารมณ์เชิงลบใน 7 วันล่าสุด`);
+
+  // check flagged reports in last 30 days
+  const thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(now.getDate()-30);
+  const reports = (student.reports || []).filter(r => r.time && new Date(r.time) >= thirtyDaysAgo);
+  const flaggedReports = reports.filter(r => r.flagged);
+  if(flaggedReports.length >= 1) reasons.push(`พบ ${flaggedReports.length} รายงานพฤติกรรมเชิงลบใน 30 วัน`);
+
   const rptCount = (student.reports || []).length;
-  if(rptCount >= 1) reasons.push(`มี ${rptCount} รายงานพฤติกรรม`);
+  if(rptCount >= 3) reasons.push(`มี ${rptCount} รายงานพฤติกรรมทั้งหมด`);
+
+  // quiz heuristic
   const q = (student.quiz || []).slice(-3);
   const lowRecent = q.filter(x=>x.score !== undefined && x.score <= 1).length;
   if(lowRecent >= 1) reasons.push(`คะแนนแบบทดสอบล่าสุดต่ำ (${lowRecent} ครั้ง)`);
@@ -765,28 +827,79 @@ function studentRiskInfo(student){
   if(reasons.length >= 2) level = 'high';
   else if(reasons.length === 1) level = 'medium';
   else level = null;
-  return { level, reasons };
+  return { level, reasons, flaggedReportsCount: flaggedReports.length };
 }
+
 function buildRiskLists(){
   const students = Object.values(state.users).filter(u=>u.role==='student');
   const risks = students.map(s => ({ student: s, info: studentRiskInfo(s) })).filter(x => x.info.level);
   risks.sort((a,b)=> { const score = l => l==='high' ? 2 : (l==='medium' ? 1 : 0); return score(b.info.level) - score(a.info.level); });
   return risks;
 }
-function renderTeacherRiskList(){
-  const el = document.getElementById('teacherRiskList'); if(!el) return;
-  const risks = buildRiskLists();
-  if(!risks.length){ el.innerHTML = '<div class="meta">ยังไม่มีนักเรียนที่อยู่ในเกณฑ์เสี่ยง</div>'; return; }
-  el.innerHTML = risks.map(r=>{ const s = r.student; const avatar = s.avatar ? `<div class="student-avatar"><img src="${s.avatar}"></div>` : `<div class="student-avatar">${(s.display||s.name).slice(0,2).toUpperCase()}</div>`; const levelClass = r.info.level === 'high' ? 'risk-high' : 'risk-medium'; const reasons = r.info.reasons.join(' • '); return `<div class="risk-item">${avatar}<div style="flex:1"><div><strong>${s.display || s.name}</strong> <span class="meta"> ${s.classId || '-'} • ${s.grade || '-'}</span></div><div class="meta" style="margin-top:6px">${reasons}</div></div><div><div class="risk-badge ${levelClass}">${r.info.level === 'high' ? 'เสี่ยงสูง' : 'เสี่ยงปานกลาง'}</div><div style="margin-top:8px"><button class="btn-ghost viewProfileBtn" data-name="${s.name}">ดูโปรไฟล์</button></div></div></div>`; }).join('');
-  document.querySelectorAll('.viewProfileBtn').forEach(b=>b.addEventListener('click', e=> viewStudentProfile(e.target.dataset.name)));
+
+/* ---------- Admin & Teacher behavior-risk charts ---------- */
+function renderBehaviorCharts(){
+  renderAdminBehaviorChart();
+  renderTeacherBehaviorChart();
 }
 
-/* ---------- Admin dashboard (kept) ---------- */
+function renderAdminBehaviorChart(){
+  // Show counts of students by risk level (overall combining mood & behavior)
+  const students = Object.values(state.users).filter(u=>u.role==='student');
+  const counts = { high:0, medium:0, none:0 };
+  students.forEach(s=>{
+    const info = studentRiskInfo(s);
+    if(info.level === 'high') counts.high++;
+    else if(info.level === 'medium') counts.medium++;
+    else counts.none++;
+  });
+  const ctx = document.getElementById('adminBehaviorRiskChart')?.getContext('2d');
+  if(!ctx) return;
+  if(adminBehaviorChart) adminBehaviorChart.destroy();
+  adminBehaviorChart = new Chart(ctx, { type:'doughnut', data:{ labels:['เสี่ยงสูง','เสี่ยงปานกลาง','ปกติ'], datasets:[{ data:[counts.high, counts.medium, counts.none], backgroundColor:['#ef4444','#f59e0b','#7c3aed'] }] }, options:{responsive:true, plugins:{legend:{position:'bottom'}}} });
+}
+
+function renderTeacherBehaviorChart(){
+  // For teacher view, show flagged-report counts per class or per selection
+  if(!document.getElementById('teacherBehaviorRiskChart')) return;
+  const mode = document.querySelector('.teacherModeBtn.active')?.dataset.mode || 'student';
+  let labels = [], data = [];
+  if(mode === 'student'){
+    // Top N students or selected student set
+    const students = Object.values(state.users).filter(u=>u.role==='student');
+    students.forEach(s=>{
+      labels.push(s.display || s.name);
+      const info = studentRiskInfo(s);
+      data.push(info.flaggedReportsCount || 0);
+    });
+  } else if(mode === 'class'){
+    const classes = Array.from(new Set(Object.values(state.users).filter(u=>u.role==='student').map(s=>s.classId || 'ไม่ระบุ')));
+    classes.forEach(c=>{
+      labels.push(c);
+      const count = Object.values(state.users).filter(u=>u.role==='student' && (u.classId===c)).reduce((acc,s)=> acc + (studentRiskInfo(s).flaggedReportsCount||0), 0);
+      data.push(count);
+    });
+  } else {
+    const grades = Array.from(new Set(Object.values(state.users).filter(u=>u.role==='student').map(s=>s.grade || 'ไม่ระบุ')));
+    grades.forEach(g=>{
+      labels.push(g);
+      const count = Object.values(state.users).filter(u=>u.role==='student' && (u.grade===g)).reduce((acc,s)=> acc + (studentRiskInfo(s).flaggedReportsCount||0), 0);
+      data.push(count);
+    });
+  }
+  const ctx = document.getElementById('teacherBehaviorRiskChart')?.getContext('2d');
+  if(!ctx) return;
+  if(teacherBehaviorChart) teacherBehaviorChart.destroy();
+  teacherBehaviorChart = new Chart(ctx, { type:'bar', data:{ labels, datasets:[{ label:'รายงานเชิงลบ (จำนวน)', data, backgroundColor: labels.map(()=>hexToRgba('#fb7185',0.9)) }] }, options:{responsive:true, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true, ticks:{precision:0}} } } });
+}
+
+/* ---------- Admin dashboard (emotion + behavior) ---------- */
 function renderAdminDashboard(){
   if(!currentUser) return;
   const u = state.users[currentUser];
   document.getElementById('adminPanel').style.display = (u.role === 'admin') ? 'block' : 'none';
   if(u.role !== 'admin') return;
+  // mood distribution (last mood)
   const moodCounts = {}; emojiChoices.forEach(e=>moodCounts[e.label]=0);
   const students = Object.values(state.users).filter(x=>x.role==='student');
   students.forEach(s => { if(s.moods && s.moods.length){ const last = s.moods[s.moods.length-1]; moodCounts[last.label] = (moodCounts[last.label]||0)+1; } });
@@ -795,12 +908,14 @@ function renderAdminDashboard(){
   if(adminMoodChart) adminMoodChart.destroy();
   adminMoodChart = new Chart(ctxMood, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor: emojiChoices.map(e=>e.color) }] }, options:{responsive:true, plugins:{legend:{position:'bottom'}}} });
 
+  // behavior risk chart (rendered via renderBehaviorCharts)
+  renderBehaviorCharts();
+
   const totalReports = Object.values(state.users).reduce((acc,u)=> acc + ((u.reports||[]).length), 0);
   const totalRedeems = (state.redeemRequests || []).filter(r=> r.status === 'approved').length;
   document.getElementById('adminTotalReports').innerText = totalReports;
   document.getElementById('adminTotalRedeems').innerText = totalRedeems;
   document.getElementById('adminTotalStudents').innerText = students.length;
-  renderAdminRiskList();
 }
 
 /* ---------- Period chart for student ---------- */
@@ -845,20 +960,58 @@ function aggregateByPeriod(moods, period){
 }
 
 /* ---------- Students list & manage stars (kept) ---------- */
-function renderStudentsList(){ const q = document.getElementById('searchStudent')?.value.trim().toLowerCase(); const container = document.getElementById('studentsList'); if(!container) return; const students = Object.values(state.users).filter(u=>u.role==='student' && (!q || (u.display||u.name).toLowerCase().includes(q))); if(!students.length){ container.innerHTML = '<div class="meta">ไม่มีนักเรียน</div>'; return; } container.innerHTML = students.map(s=>{ const avatarHtml = s.avatar ? `<div class="student-avatar"><img src="${s.avatar}" alt=""></div>` : `<div class="student-avatar">${(s.display||s.name).slice(0,2).toUpperCase()}</div>`; return `<div style="padding:8px;border-bottom:1px solid #f3f6fb;display:flex;align-items:center;gap:10px">${avatarHtml}<div style="flex:1"><div><strong>${s.display||s.name}</strong></div><div class="meta">ชั้น: ${s.classId || '-'} • ${s.grade || '-'}</div></div><div style="display:flex;align-items:center;gap:8px"><div style="font-weight:700;color:var(--primary)">⭐ <span id="star-count-${s.name}">${s.stars||0}</span></div><div style="display:flex;flex-direction:column;gap:6px"><button class="addStar" data-name="${s.name}" title="เพิ่มดาว">+1</button><button class="removeStar btn-ghost" data-name="${s.name}" title="ลดดาว">−1</button></div></div></div>`; }).join(''); document.querySelectorAll('.addStar').forEach(b=>b.addEventListener('click', e=>modifyStars(e.target.dataset.name,1))); document.querySelectorAll('.removeStar').forEach(b=>b.addEventListener('click', e=>modifyStars(e.target.dataset.name,-1))); }
+function renderStudentsList(){
+  const q = document.getElementById('searchStudent')?.value.trim().toLowerCase();
+  const container = document.getElementById('studentsList');
+  if(!container) return;
+  const students = Object.values(state.users).filter(u=>u.role==='student' && (!q || (u.display||u.name).toLowerCase().includes(q)));
+  if(!students.length){ container.innerHTML = '<div class="meta">ไม่มีนักเรียน</div>'; return; }
+  container.innerHTML = students.map(s=>{
+    const avatarHtml = s.avatar ? `<div class="student-avatar"><img src="${s.avatar}" alt=""></div>` : `<div class="student-avatar">${(s.display||s.name).slice(0,2).toUpperCase()}</div>`;
+    return `<div style="padding:8px;border-bottom:1px solid #f3f6fb;display:flex;align-items:center;gap:10px">
+      ${avatarHtml}
+      <div style="flex:1">
+        <div><strong>${s.display||s.name}</strong></div>
+        <div class="meta">ชั้น: ${s.classId || '-'} • ${s.grade || '-'}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="font-weight:700;color:var(--primary)">⭐ <span id="star-count-${s.name}">${s.stars||0}</span></div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <button class="addStar" data-name="${s.name}" title="เพิ่มดาว">+1</button>
+          <button class="removeStar btn-ghost" data-name="${s.name}" title="ลดดาว">−1</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+  document.querySelectorAll('.addStar').forEach(b=>b.addEventListener('click', e=> modifyStars(e.target.dataset.name, 1)));
+  document.querySelectorAll('.removeStar').forEach(b=>b.addEventListener('click', e=> modifyStars(e.target.dataset.name, -1)));
+}
 document.getElementById('searchStudent')?.addEventListener('input', renderStudentsList);
-function modifyStars(name,delta){ if(!currentUser) return alert('กรุณาเข้าสู่ระบบ'); const actor = state.users[currentUser]; if(!actor || actor.role !== 'teacher') return alert('ต้องเป็นครูจึงทำได้'); const s = state.users[name]; if(!s) return alert('ไม่พบนักเรียน'); const newVal = Math.max(0, (s.stars || 0) + delta); const oldVal = s.stars || 0; s.stars = newVal; saveState(); const el = document.getElementById(`star-count-${s.name}`); if(el) el.innerText = s.stars; logActivity(`${actor.display||actor.name} ${delta>0?'เพิ่ม':'ลด'} ดาวให้ ${s.display||s.name}: ${oldVal} → ${s.stars}`); renderProfile(); renderQuickPanel(); }
 
-/* ---------- Reports: teacher -> advisor (new) ---------- */
+function modifyStars(name, delta){
+  if(!currentUser) return alert('กรุณาเข้าสู่ระบบ');
+  const actor = state.users[currentUser];
+  if(!actor || actor.role !== 'teacher') return alert('ต้องเป็นครูจึงทำได้');
+  const s = state.users[name];
+  if(!s) return alert('ไม่พบนักเรียน');
+  const newVal = Math.max(0, (s.stars || 0) + delta);
+  const oldVal = s.stars || 0;
+  s.stars = newVal;
+  saveState();
+  const el = document.getElementById(`star-count-${s.name}`);
+  if(el) el.innerText = s.stars;
+  logActivity(`${actor.display||actor.name} ${delta>0?'เพิ่ม':'ลด'} ดาวให้ ${s.display||s.name}: ${oldVal} → ${s.stars}`);
+  renderProfile(); renderQuickPanel();
+}
+
+/* ---------- Reports: teacher -> advisor with AI check ---------- */
 function populateReportSelectors(){
-  // populate students & advisors (teachers) in selects
   const studentSel = document.getElementById('reportStudentSelect');
   const advSel = document.getElementById('reportAdvisorSelect');
   if(studentSel){
     studentSel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>';
     Object.values(state.users).filter(u=>u.role==='student').forEach(s=>{
-      const opt = document.createElement('option'); opt.value = s.name; opt.innerText = `${s.display || s.name} • ${s.classId || ''}`;
-      studentSel.appendChild(opt);
+      const opt = document.createElement('option'); opt.value = s.name; opt.innerText = `${s.display || s.name} • ${s.classId || ''}`; studentSel.appendChild(opt);
     });
   }
   if(advSel){
@@ -868,6 +1021,7 @@ function populateReportSelectors(){
     });
   }
 }
+
 document.getElementById('clearReportFields')?.addEventListener('click', ()=>{
   document.getElementById('reportStudentSelect').value = '';
   document.getElementById('reportAdvisorSelect').value = '';
@@ -883,17 +1037,24 @@ document.getElementById('sendReportToAdvisor')?.addEventListener('click', ()=>{
   const advisorName = document.getElementById('reportAdvisorSelect').value;
   const text = document.getElementById('reportTextToAdvisor').value.trim();
   if(!studentName || !advisorName || !text) return alert('กรุณาเลือกนักเรียน เลือกครูที่ปรึกษา และกรอกเนื้อหารายงาน');
-  const report = { id: generateId(), teacher: currentUser, teacherDisplay: sender.display||sender.name, student: studentName, text, time: new Date().toLocaleString(), viewed:false };
-  // add to student's reports
-  state.users[studentName].reports = state.users[studentName].reports || []; state.users[studentName].reports.push(report);
-  // send to advisor inboxReports
-  state.users[advisorName].inboxReports = state.users[advisorName].inboxReports || []; state.users[advisorName].inboxReports.push(report);
+
+  // Analyze text
+  const analysis = analyzeReportText(text);
+  const report = { id: generateId(), teacher: currentUser, teacherDisplay: sender.display||sender.name, student: studentName, text, time: new Date().toLocaleString(), viewed:false, flagged: analysis.flagged, score: analysis.score, matches: analysis.matches };
+
+  // Save to student's reports
+  state.users[studentName].reports = state.users[studentName].reports || [];
+  state.users[studentName].reports.push(report);
+
+  // Send to advisor inboxReports
+  state.users[advisorName].inboxReports = state.users[advisorName].inboxReports || [];
+  state.users[advisorName].inboxReports.push(report);
+
+  // Log activity
   saveState();
-  logActivity(`${currentUser} ส่งรายงานของ ${studentName} ถึง ${advisorName}`);
+  logActivity(`${currentUser} ส่งรายงานของ ${studentName} ถึง ${advisorName} (flagged:${report.flagged}, score:${report.score})`);
   document.getElementById('reportSendResult').innerText = 'ส่งเรียบร้อยแล้ว';
-  // clear message area
   document.getElementById('reportTextToAdvisor').value = '';
-  // if advisor is current user, re-render inbox; else render teacher UI refresh
   renderAll();
 });
 
@@ -905,7 +1066,15 @@ function renderAdvisorInbox(){
   if(u.role !== 'teacher'){ el.innerHTML = '<div class="meta">เฉพาะครูที่ปรึกษาเท่านั้นที่เห็นกล่องนี้</div>'; return; }
   const inbox = (u.inboxReports || []).slice().reverse();
   if(!inbox.length){ el.innerHTML = '<div class="meta">ยังไม่มีรายงานที่ส่งมา</div>'; return; }
-  el.innerHTML = inbox.map(r=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${r.time} — รายงานจาก: <strong>${r.teacherDisplay || r.teacher}</strong></div><div style="margin-top:6px"><strong>นักเรียน:</strong> ${state.users[r.student]?.display || r.student}</div><div style="margin-top:6px">${escapeHtml(r.text)}</div></div>`).join('');
+  el.innerHTML = inbox.map(r=>{
+    const flaggedHtml = r.flagged ? `<span class="flagged">มีสัญญาณพฤติกรรมเชิงลบ (คะแนน ${r.score})</span>` : '';
+    return `<div style="padding:8px;border-bottom:1px solid #f3f6fb">
+      <div class="meta">${r.time} — รายงานจาก: <strong>${r.teacherDisplay || r.teacher}</strong></div>
+      <div style="margin-top:6px"><strong>นักเรียน:</strong> ${state.users[r.student]?.display || r.student} ${flaggedHtml}</div>
+      <div style="margin-top:6px">${escapeHtml(r.text)}</div>
+      ${r.matches && r.matches.length ? `<div class="meta" style="margin-top:6px">คำที่ตรวจพบ: ${r.matches.join(' • ')}</div>` : ''}
+    </div>`;
+  }).join('');
 }
 
 /* ---------- appt inbox & note handling (kept) ---------- */
@@ -915,13 +1084,12 @@ function handleApptNote(id,note){ const t = state.users[currentUser]; const item
 
 /* ---------- reports list for teacher (reports they created) ---------- */
 function renderReportsList(){ const all = []; Object.values(state.users).forEach(u=>{ if(u.reports) u.reports.forEach(r=>{ if(r.teacher === currentUser) all.push(r); })}); const el = document.getElementById('reportsList'); if(!el) return; if(!all.length){ el.innerHTML = '<div class="meta">ยังไม่มีรายงาน</div>'; return; } el.innerHTML = all.map(r=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${r.time} → ${r.student}</div><div>${r.text}</div></div>`).join(''); }
-function buildReportStudentSelect(){ const sel = document.getElementById('reportStudent'); if(!sel) return; sel.innerHTML = '<option value="">-- เลือกนักเรียน --</option>'; Object.values(state.users).filter(u=>u.role==='student').forEach(s=>{ const opt = document.createElement('option'); opt.value = s.name; opt.innerText = s.display || s.name; sel.appendChild(opt); }); }
 
 /* quick panel & activity */
 function renderQuickPanel(){ const el = document.getElementById('quickPanel'); if(!currentUser){ el.innerHTML=''; return; } const u = state.users[currentUser]; let html = `<div class="meta">บทบาท: ${u.role}</div>`; if(u.role==='student'){ html += `<div style="margin-top:6px"><strong>ดาว: ${u.stars || 0}</strong></div>`; html += `<div class="meta" style="margin-top:6px">บันทึก: ${(u.diaries||[]).length} ครั้ง</div>`; } else if(u.role === 'teacher'){ const pending = (u.inbox||[]).filter(i=>i.status==='pending').length; html += `<div style="margin-top:6px"><strong>คำขอนัดรออนุมัติ: ${pending}</strong></div>`; } else if(u.role === 'admin'){ const students = Object.values(state.users).filter(x=>x.role==='student').length; html += `<div style="margin-top:6px"><strong>นักเรียนทั้งหมด: ${students}</strong></div>`; } el.innerHTML = html; }
 function renderActivity(){ const el = document.getElementById('activityLog'); el.innerHTML = state.activity.map(a=>`<div style="padding:8px;border-bottom:1px solid #f3f6fb"><div class="meta">${a.time}</div><div>${a.txt}</div></div>`).join(''); }
 
-/* ---------- helpers ---------- */
+/* ---------- utilities ---------- */
 function dateKey(d){ const dt = new Date(d.getFullYear(), d.getMonth(), d.getDate()); return `${dt.getDate().toString().padStart(2,'0')} ${dt.toLocaleString('th-TH',{month:'short'})}`; }
 function formatDayLabel(label){ return label; }
 function stripTime(d){ return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
@@ -939,7 +1107,7 @@ function viewStudentProfile(name){
   if(s.moods && s.moods.length) txt += `${s.moods[s.moods.length-1].time} ${s.moods[s.moods.length-1].emoji} ${s.moods[s.moods.length-1].label}\n\n`;
   txt += 'ประวัติ My diary:\n'; (s.diaries||[]).forEach(d=> txt += `${d.time} — ${d.text}\n`);
   txt += '\nประวัติการแลก:\n'; (s.redeemHistory||[]).forEach(r=> txt += `${r.time} — ${r.item} (-${r.cost}) by ${r.approvedBy||'-'}\n`);
-  txt += '\nรายงาน:\n'; (s.reports||[]).forEach(r=> txt += `${r.time} — ${r.text}\n`);
+  txt += '\nรายงาน:\n'; (s.reports||[]).forEach(r=> txt += `${r.time} — ${r.text} ${r.flagged?('[Flagged:'+r.score+']') : ''}\n`);
   alert(txt);
 }
 
